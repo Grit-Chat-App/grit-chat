@@ -1,0 +1,59 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+# iOS 16.0, not React Native's min_ios_version_supported (15.1). The Hop Apple SDK declares iOS 16
+# in Package.swift and its podspecs say the same, so CocoaPods refuses to resolve the graph at 15.1
+# with "Specs satisfying the `Hop` dependency were found, but they required a higher minimum
+# deployment target". Raising it here is the honest floor for an app that links Hop.
+platform :ios, '16.0'
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'GritChat' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  # The Hop Apple client SDK, three pods matching the SDK's three SwiftPM targets.
+  #
+  # DEV PIN on this branch: hop main 54a2e82 (ABI 6, the hps:// channel surface), because no
+  # published hop-sdk-apple release carries channels yet. CHop is a :podspec pod sourcing the
+  # locally built xcframework zip in vendor/ (file://, sha256-verified); HopContract and HopSDK
+  # are :path pods whose Swift sources are vendored beside their specs. The full story, the
+  # rebuild steps, and the revert plan: ios/hop-pods/README.md.
+  #
+  # What each one carries:
+  #   CHop        the compiled core, libhop.xcframework, from the local dev zip
+  #   HopContract the pure Swift bearer contract, no native code
+  #   HopSDK      HopNode and HopRuntime, the SDK proper, exposing the module `Hop`
+  #
+  # @hop-mesh/react-native is vendored as a tarball (also from hop main 54a2e82) and autolinked;
+  # its HopMesh.podspec declares a dependency on HopSDK, which is why these three have to be
+  # resolvable at all. CocoaPods cannot resolve a Swift Package Manager dependency, which is the
+  # whole reason the pods exist.
+  pod 'CHop',        :podspec => 'hop-pods/CHop/CHop.podspec'
+  pod 'HopContract', :path => 'hop-pods/HopContract'
+  pod 'HopSDK',      :path => 'hop-pods/HopSDK'
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
+    )
+  end
+end

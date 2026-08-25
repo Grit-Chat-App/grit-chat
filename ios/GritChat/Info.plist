@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Grit Chat</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Which Hop relay this build talks to. Substituted from the GRIT_RELAY_URL build setting, which
+	     the project defines as empty in both Debug and Release so an unset environment lands here as
+	     an empty string. GritConfig reads this key and hands it to JavaScript verbatim; there is no
+	     default relay anywhere in the app. -->
+	<key>GritRelayURL</key>
+	<string>$(GRIT_RELAY_URL)</string>
+	<!-- Which commit this binary came from, and when it was built, substituted from the
+	     GRIT_BUILD_SHA and GRIT_BUILD_TIME build settings. Version 1.0 build 1 is hard-coded in both
+	     configurations, so without these two keys every build this repo produces is
+	     indistinguishable from every other and "which build is on that phone" becomes forensics.
+	     A build that was not told leaves the token unexpanded, and GritConfig reports it as unset
+	     rather than inventing a value. The documented build commands pass both. -->
+	<key>GritBuildSha</key>
+	<string>$(GRIT_BUILD_SHA)</string>
+	<key>GritBuildTime</key>
+	<string>$(GRIT_BUILD_TIME)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<!-- App Transport Security governs ws:// exactly as it governs http://, so the plain-websocket
+		     dev relay needs a named exception per host. Scoped to loopback only, which is what the
+		     simulator and an `adb reverse`-style port forward actually use. A physical phone dialling
+		     this workstation's LAN address directly needs that address added here for that run and
+		     removed again afterwards: a developer's private address must never ship in a build, and a
+		     checked-in one weakens transport security for every user for a host none of them can
+		     reach. Nothing else is exempted. -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>127.0.0.1</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<!-- The contact-add screen scans a QR code to exchange Hop addresses. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Grit Chat uses the camera to scan a contact's QR code so you can add them without typing an address.</string>
+	<!-- Location: one-shot when the user shares where they are. Never background tracking. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Grit Chat uses your location only when you choose to share where you are, and to show how far a shared location is from you.</string>
+	<!-- Voice notes: the composer records a short message and sends it as media. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Grit Chat uses the microphone to record voice notes you choose to send.</string>
+	<!-- Required from iOS 14 on before the app may touch anything on the local network. Without it a
+	     connection to a LAN address fails with no useful error, which reads as a broken relay rather
+	     than a missing permission. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Grit Chat connects to a Hop relay running on your local network during development.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string></string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
+	<!-- Every font file bundled into the app. iOS registers only what is listed here, and React
+	     Native on iOS then resolves a fontFamily by the font's PostScript name. Each of these files
+	     has a PostScript name identical to its file stem, so the design tokens can name them
+	     directly. The first nine are copied by this target's Copy Bundle Resources phase from
+	     src/design/fonts; FontAwesome.ttf arrives from the RNVectorIcons pod's own resource copy,
+	     which is why it is listed here but not in the target's resources phase. -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>Barlow-Regular.ttf</string>
+		<string>Barlow-Medium.ttf</string>
+		<string>Barlow-SemiBold.ttf</string>
+		<string>Barlow-Bold.ttf</string>
+		<string>BarlowCondensed-SemiBold.ttf</string>
+		<string>BarlowCondensed-Bold.ttf</string>
+		<string>IBMPlexMono-Regular.ttf</string>
+		<string>IBMPlexMono-Medium.ttf</string>
+		<string>IBMPlexMono-SemiBold.ttf</string>
+		<string>FontAwesome.ttf</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+</dict>
+</plist>

@@ -1,0 +1,99 @@
+Grit Chat
+Copyright 2026 Grit Chat LLC
+
+This product includes software developed by Grit Chat LLC, licensed under the
+Apache License, Version 2.0. The full licence text is in LICENSE at the root of
+this repository.
+
+--------------------------------------------------------------------------------
+WHY THIS FILE EXISTS
+--------------------------------------------------------------------------------
+
+Apache License 2.0 section 4(d) requires a NOTICE file to be propagated only when
+the upstream work being redistributed ships one. None of the components vendored
+into this repository does: there is no NOTICE inside
+vendor/libhop-main-54a2e82.xcframework.zip, nor
+vendor/hop-mesh-react-native-main-54a2e82.tgz, nor
+vendor/hop-android-maven-main-54a2e82.zip (including inside the hop-0.0.5.aar),
+nor anywhere under ios/hop-pods/ or vendor/hop-sdk-dev/.
+
+So nothing here is owed under 4(d). This file exists anyway, because the point of
+the clause is that attribution should be legible to someone auditing the
+repository, and a tree that mixes first-party code with vendored binaries is not
+legible without it.
+
+If any vendored component later ships a NOTICE, its text must be reproduced here
+verbatim rather than summarised.
+
+--------------------------------------------------------------------------------
+FIRST-PARTY CODE
+--------------------------------------------------------------------------------
+
+Everything in this repository except the paths listed under VENDORED COMPONENTS
+below:
+
+    Copyright 2026 Grit Chat LLC
+    Licensed under the Apache License, Version 2.0 (see LICENSE)
+
+Grit Chat LLC is a Colorado limited liability company. The name is written
+without a comma before the designator, which is how the state's record holds it.
+
+--------------------------------------------------------------------------------
+VENDORED COMPONENTS
+--------------------------------------------------------------------------------
+
+These are not Grit Chat LLC's work and are not covered by the copyright above.
+They are redistributed under their own licence, which travels with them. Hop Mesh
+LLC is a separate company and supplies these to Grit Chat LLC as a customer.
+
+All of them carry the same licence:
+
+    Apache License, Version 2.0
+    Copyright 2026 Hop Mesh, LLC
+
+Written as the upstream files write it. Where a component's own licence file sits
+in this tree:
+
+  ios/hop-pods/CHop/
+      The libhop C ABI, consumed as the xcframework in
+      vendor/libhop-main-54a2e82.xcframework.zip.
+      Licence: ios/hop-pods/LICENSE.md
+      The archive itself carries no licence file; its podspec supplies the text.
+
+  ios/hop-pods/HopContract/
+      Licence: ios/hop-pods/HopContract/LICENSE.md
+
+  ios/hop-pods/HopSDK/
+      Licence: ios/hop-pods/HopSDK/LICENSE.md
+
+  vendor/hop-sdk-dev/
+      Swift sources for the same Hop SDK, used as a SwiftPM path dependency.
+      Carries no licence file of its own; the same Apache-2.0 terms and the same
+      copyright holder apply, and the text is at ios/hop-pods/LICENSE.md.
+
+  vendor/hop-mesh-react-native-main-54a2e82.tgz
+      Licence: package/LICENSE.md inside the archive, and its package.json
+      declares "license": "Apache-2.0".
+
+  vendor/hop-android-maven-main-54a2e82.zip
+      Licence: declared in the Maven POM at
+      maven-repository/sh/hop/hop/0.0.5/hop-0.0.5.pom as
+      "Apache License, Version 2.0". The archive carries no separate licence
+      file.
+
+  vendor/libhop-main-54a2e82.xcframework.zip
+      Prebuilt binary for the above. Carries no licence file inside the archive.
+      Covered by ios/hop-pods/LICENSE.md through ios/hop-pods/CHop/CHop.podspec,
+      which embeds that file's text as the pod's licence.
+
+Every LICENSE.md named above is byte-identical to the others, and each is the
+canonical Apache-2.0 text with the appendix completed by the copyright holder.
+
+--------------------------------------------------------------------------------
+TRADEMARKS
+--------------------------------------------------------------------------------
+
+Apache License 2.0 section 6 grants no rights to trade names, trademarks or
+service marks. Nothing in this repository, and nothing in the licence it is
+released under, grants any right to use the name "Grit Chat", the Grit Chat
+marks, or the marks of Hop Mesh, LLC.

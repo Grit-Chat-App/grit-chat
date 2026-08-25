@@ -1,0 +1,14 @@
+# Build output and Astro's generated type cache.
+dist/
+.astro/
+
+# Dependencies.
+node_modules/
+
+# Local environment. The committed example is .env.example.
+.env
+.env.local
+.env.*.local
+
+# The generated woff2 faces in public/fonts are deliberately NOT ignored. They are committed so a
+# build never depends on the React Native app's src/design/fonts directory surviving a rename.

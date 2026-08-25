@@ -1,0 +1,51 @@
+---
+// The wordmark, inlined rather than linked, so it inherits currentColor and costs no extra request.
+// The SVG is build output from brand/tools/build.mjs and carries baked outlines, so it does not
+// depend on the webfont having loaded.
+
+import wordmark from '../assets/brand/gritchat-wordmark.svg?raw';
+import { Branding } from '../branding';
+
+interface Props {
+  /** Rendered height in CSS pixels. The brand minimum is 14; below that use the lettermark. */
+  height?: number;
+  /** True when this instance is the page's own name, which makes the inner title redundant. */
+  decorative?: boolean;
+}
+
+const { height = 22, decorative = false } = Astro.props;
+
+if (height < 14) {
+  throw new Error(
+    `Wordmark height ${height} is below the verified minimum of 14px. See brand/README.md.`,
+  );
+}
+
+// The generated file carries its own <title> and aria-label, which is right when it stands alone and
+// wrong when it sits inside a link or heading that already names the product. Strip both in that
+// case and let the surrounding element carry the name, so a screen reader hears it once.
+const svg = decorative
+  ? wordmark
+      .replace(/<title>.*?<\/title>/s, '')
+      .replace(/\srole="img"/, ' role="presentation"')
+      .replace(/\saria-label="[^"]*"/, ' aria-hidden="true"')
+  : wordmark.replace(/aria-label="[^"]*"/, `aria-label="${Branding.displayName}"`);
+---
+
+<span class="wordmark" style={`--wordmark-height:${height}px`} set:html={svg} />
+
+<style>
+  .wordmark {
+    display: inline-block;
+    color: inherit;
+  }
+
+  /* The SVG's own viewBox carries the aspect ratio, so setting height alone is enough and cannot
+     distort it. */
+  .wordmark :global(svg) {
+    display: block;
+    block-size: var(--wordmark-height);
+    inline-size: auto;
+    fill: currentColor;
+  }
+</style>

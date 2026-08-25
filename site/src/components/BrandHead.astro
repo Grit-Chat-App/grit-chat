@@ -1,0 +1,33 @@
+---
+// Brand assets for <head>, passed into Base.astro's head slot. Base.astro deliberately hardcodes no
+// icon, so this is the only file that knows what the mark looks like.
+//
+// The SVG favicon is a single letter G rather than the app icon's GC: at 16px the two letters merge
+// into one dark smudge, verified by rendering at 4x. See brand/README.md.
+
+import faviconSvg from '../assets/brand/favicon.svg?url';
+import appleTouchIcon from '../assets/brand/apple-touch-icon.png';
+
+// Files in public/ are served under the base path, and a GitHub Pages project site has one.
+//
+// Astro's BASE_URL does NOT reliably carry a trailing slash: with `trailingSlash: 'ignore'` it
+// arrives as `/burnchat`, so a naive template produced `/burnchatfavicon.ico`. Caught by building
+// with a base and reading the emitted tags. Normalised here rather than at each use site.
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+---
+
+{/* Modern browsers take the SVG and scale it, so it stays the primary. */}
+<link rel="icon" href={faviconSvg} type="image/svg+xml" />
+
+{/* The fallbacks, for clients that ignore an SVG icon or pick from `sizes` rather than scaling.
+    Generated from the same SVG by scripts/favicons.mjs, never drawn twice. */}
+<link rel="icon" href={`${base}favicon-32.png`} type="image/png" sizes="32x32" />
+<link rel="icon" href={`${base}favicon-16.png`} type="image/png" sizes="16x16" />
+
+{/* Browsers and crawlers request this by path whether or not it is linked. Linking it as well
+    means the request is answered rather than 404ing in every log. */}
+<link rel="alternate icon" href={`${base}favicon.ico`} sizes="16x16 32x32 48x48" />
+
+{/* Safari ignores SVG here, so this one has to be a raster. 180 is the size iOS asks for. */}
+<link rel="apple-touch-icon" href={appleTouchIcon.src} />

@@ -1,0 +1,122 @@
+---
+// A real app screenshot in a device frame.
+//
+// The frame is CSS, not an image: a bezel is a rounded rectangle and shipping a PNG of one would be
+// a second asset that has to be colour-matched to the palette by hand every time the palette moves.
+// Drawn from tokens, it cannot drift.
+//
+// WHAT THIS COMPONENT REFUSES TO DO. It never renders an empty frame. A missing screenshot is a
+// build error, because an empty phone outline on a marketing page reads as a product with nothing in
+// it, and that failure is silent in a way a stack trace is not.
+//
+// It also never calls a simulator a phone. `capturedOn` is rendered under the frame verbatim from
+// the manifest, so a reader is told what they are looking at rather than left to assume. The frame
+// is a presentation device; the caption is the truth about it.
+
+import { Image } from 'astro:assets';
+import type { Screen } from '../assets/screens';
+
+interface Props {
+  screen: Screen;
+  /** Rendered width of the screen inside the bezel. The frame sizes itself from this. */
+  width?: number;
+  loading?: 'eager' | 'lazy';
+  /** Suppresses the caption where the surrounding copy already names the provenance. */
+  quiet?: boolean;
+}
+
+const { screen, width = 320, loading = 'lazy', quiet = false } = Astro.props;
+
+if (screen == null || screen.src == null) {
+  throw new Error(
+    'DeviceFrame was given no screenshot. A real capture is required: this component will not ' +
+      'render an empty frame, and a screen that cannot be captured belongs out of the page rather ' +
+      'than faked.',
+  );
+}
+if (!screen.capturedOn) {
+  throw new Error(
+    `screen "${screen.id}" has no capturedOn. Every capture states the hardware or simulator it ` +
+      'came from, because a simulator is not a handset.',
+  );
+}
+
+// Never upscale a capture: a candidate wider than the source is a bigger file with no more detail.
+const candidates = [width, width * 2].filter((w) => w <= screen.src.width);
+if (candidates.length === 0) candidates.push(screen.src.width);
+---
+
+<figure class="device" style={`--screen-w:${width}px`}>
+  <div class="bezel">
+    <Image
+      src={screen.src}
+      alt={screen.alt}
+      widths={candidates}
+      sizes={`${width}px`}
+      loading={loading}
+      decoding="async"
+    />
+  </div>
+  {
+    !quiet && (
+      <figcaption>
+        {screen.caption}
+        <span class="provenance">{screen.capturedOn}</span>
+      </figcaption>
+    )
+  }
+</figure>
+
+<style>
+  .device {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-m);
+    max-width: 100%;
+  }
+
+  /* The bezel is deliberately thin and unbranded. A heavy chrome phone illustration dates the page
+     and competes with the screen inside it, which is the thing worth looking at. */
+  .bezel {
+    width: var(--screen-w);
+    max-width: 100%;
+    padding: 6px;
+    border-radius: 34px;
+    background: var(--raised);
+    box-shadow:
+      inset 0 0 0 1px var(--line-strong),
+      0 24px 60px -20px rgb(0 0 0 / 70%);
+  }
+
+  .bezel :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 28px;
+    /* The capture already carries the app's own dark canvas, so the frame does not add one. */
+    background: var(--night);
+  }
+
+  figcaption {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-small);
+    color: var(--fg-faint);
+    text-align: center;
+    max-width: 26rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Set apart from the caption so it reads as a fact about the image rather than as part of the
+     sentence describing it. */
+  .provenance::before {
+    content: '';
+  }
+  .provenance {
+    color: var(--alkali-faint);
+    opacity: 0.85;
+  }
+</style>

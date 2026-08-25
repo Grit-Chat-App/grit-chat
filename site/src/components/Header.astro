@@ -1,0 +1,77 @@
+---
+// The masthead. Deliberately thin: the wordmark, and jumps to the two sections a sceptical reader
+// wants, which are how it works and where it actually is. No hamburger, no dropdown, nothing to
+// hydrate.
+
+import Wordmark from './Wordmark.astro';
+import { Branding } from '../branding';
+---
+
+<header class="masthead">
+  <div class="shell bar">
+    {/* On the home page the wordmark is the page's own name rather than a link away, so it is a
+        heading, and the visible text lives in the SVG. */}
+    <a href="#main" class="home" aria-label={`${Branding.displayName}, skip to content`}>
+      <Wordmark height={26} decorative />
+    </a>
+
+    <nav aria-label="Sections">
+      <ul role="list">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#status">Where it is</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .masthead {
+    border-block-end: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-l);
+    min-block-size: var(--touch-min);
+    padding-block: var(--space-m);
+  }
+
+  .home {
+    display: inline-flex;
+    color: var(--fg);
+    text-decoration: none;
+    border-radius: var(--radius-chip);
+  }
+
+  nav ul {
+    display: flex;
+    gap: var(--space-l);
+  }
+
+  nav a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--touch-min);
+    font-family: var(--font-body);
+    font-size: var(--text-secondary);
+    color: var(--fg-muted);
+    text-decoration: none;
+    border-radius: var(--radius-chip);
+  }
+
+  nav a:hover {
+    color: var(--fg);
+  }
+
+  /* Below the narrowest phone the nav wraps under the wordmark rather than shrinking the tap
+     targets, because the tap target is the one thing that must not shrink. */
+  @media (max-width: 26rem) {
+    .bar {
+      flex-wrap: wrap;
+      row-gap: 0;
+    }
+  }
+</style>

@@ -1,0 +1,113 @@
+# GritChat CI gate.
+#
+# The app is the React Native tree. What a macOS runner can honestly verify of it: the harness
+# package builds against the vendored Hop SDK pin, the TypeScript typechecks, the unit suite passes,
+# and the committed app icon rasters still match the SVG they are generated from. The Detox end to
+# end suite needs a booted simulator and a live relay and runs locally per PATH.md; it has never
+# been a CI step and pretending otherwise would add a leg that cannot fail for the right reasons.
+#
+# There is no placeholder lint job and no empty leg here on purpose; anything added to this file
+# must be able to fail when the repo is actually broken.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A superseded run on the same ref is cancelled instead of paying for two
+# macOS jobs back to back.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Nothing in this workflow needs write access.
+permissions:
+  contents: read
+
+jobs:
+  build-typecheck-test:
+    # macos-26 is the current GA Apple Silicon (arm64) macOS runner image
+    # (GA February 2026). Chosen because the Hop SDK arrives as a binary
+    # xcframework and arm64 macOS is the slice this repo was proven to build
+    # and link against during bootstrap, so the runner arch matches the proven
+    # path; macos-14 is in deprecation and macos-15 is the previous image
+    # generation; macos-latest floats (it was macos-15, now points at
+    # macos-26), so a pinned label keeps a green run meaning the same thing
+    # from week to week.
+    runs-on: macos-26
+    steps:
+      # Pinned to an exact release tag rather than a floating major: a
+      # floating tag can be repointed underneath us without a change to this
+      # file, and this file should only change behavior when someone edits it
+      # on purpose.
+      - uses: actions/checkout@v7.0.1
+
+      # The image's default Xcode drifts as the image is updated (it moved
+      # from 26.5 to 26.6 in July 2026). Selecting explicitly means a green
+      # run says "Xcode 26.6 built this", not "whatever was default that
+      # week". 26.6 is the current default on the macos-26 image, so this pin
+      # tracks the image rather than fighting it.
+      - name: Select Xcode 26.6
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcode-select -p
+          xcodebuild -version
+          swift --version
+
+      # The Hop SDK is a path dependency (vendor/hop-sdk-dev) whose binary
+      # payload is committed as ONE zip (no second copy of a 43 MB artifact in
+      # git), and SwiftPM's binaryTarget(path:) needs it unzipped inside the
+      # package. Materializing it is therefore a build prerequisite, not a
+      # local convenience: without this step `swift build` fails with
+      # "local binary target 'CHop' ... does not contain a binary artifact",
+      # which is exactly how this branch was red before the cutover.
+      #
+      # The checksum is asserted against the provenance recorded in
+      # ios/hop-pods/README.md, so a swapped or truncated artifact fails here
+      # loudly instead of linking something nobody vetted.
+      - name: Materialize the vendored xcframework
+        run: |
+          set -o pipefail
+          echo "a88b346646ceb34164d45ec32554e6a4b10a9efab09fd6ea1e31baf89b0539eb  vendor/libhop-main-54a2e82.xcframework.zip" | shasum -a 256 -c -
+          bash vendor/hop-sdk-dev/scripts/fetch-framework.sh
+          test -d vendor/hop-sdk-dev/Frameworks/libhop.xcframework
+
+      # The proof harness is the only Swift target left. Building it proves
+      # the vendored pin still resolves and links; a broken vendor tree fails
+      # here instead of in the middle of a proof run.
+      - name: Build the proof harness
+        run: swift build -c release
+
+      - uses: actions/setup-node@v6.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Typecheck is its own step so a type error is attributable on its own
+      # rather than buried in a test run.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx jest
+
+      # The app icons are derived artifacts: brand/icon/*.svg is the source and every raster in
+      # ios/ and android/ is generated from it. This step regenerates nothing, it only fails when a
+      # committed raster no longer matches its source, which is what happens when a mark is refined
+      # and nine of eleven files get updated. Without it the generator is a script somebody
+      # remembers to run, not a gate.
+      #
+      # ImageMagick is INSTALLED here rather than assumed. I first wrote this step with a comment
+      # claiming the macOS runner image ships it; it does not. The macos-26 image manifest lists no
+      # ImageMagick at all, so the check would have failed for a missing tool and my own gate would
+      # have been the thing blocking main, which is worse than not wiring it.
+      - name: Install ImageMagick
+        run: brew install imagemagick
+
+      - name: Icons match their source
+        run: npm run icons:check

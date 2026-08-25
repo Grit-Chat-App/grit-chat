@@ -1,0 +1,33 @@
+{
+  "name": "grit-chat-site",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Static marketing site for Grit Chat. Astro, no client JS, no server.",
+  "scripts": {
+    "dev": "astro dev",
+    "fonts": "node scripts/fonts.mjs",
+    "favicons": "node scripts/favicons.mjs",
+    "favicons:check": "node scripts/favicons.mjs --verify",
+    "prebuild": "node scripts/check-trademark.mjs && node scripts/fonts.mjs --verify && node scripts/favicons.mjs --verify",
+    "build": "astro build",
+    "inline": "node tools/inline.mjs",
+    "snapshot": "npm run build && npm run inline",
+    "check:social": "node scripts/check-social-card.mjs",
+    "preview": "astro preview",
+    "check": "astro check",
+    "check:trademark": "node scripts/check-trademark.mjs"
+  },
+  "dependencies": {
+    "astro": "^7.2.4"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/sitemap": "^3.7.3",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "axe-core": "^4.13.0",
+    "subset-font": "^2.5.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,60 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The relay websocket, and the Metro dev server in a debug build. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- The contact-add screen scans a QR code to exchange Hop addresses (ScanContactScreen,
+         react-native-camera-kit). Mirrors NSCameraUsageDescription on iOS. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Voice notes: the composer records a short message and sends it as media
+         (react-native-audio-recorder-player). Mirrors NSMicrophoneUsageDescription on iOS. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- One-shot location, only when the user chooses to share where they are
+         (@react-native-community/geolocation via src/hop/geolocation.ts). Never background
+         tracking, so there is no ACCESS_BACKGROUND_LOCATION here. Mirrors
+         NSLocationWhenInUseUsageDescription on iOS.
+
+         Both precision levels are declared because from API 31 on a request for the fine
+         permission is rejected unless the coarse one is declared alongside it: the runtime dialog
+         offers the user the choice between them. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- No storage or media-read permission. Sending a photo goes through launchImageLibrary()
+         from react-native-image-picker 8, which builds its intent with the AndroidX photo picker
+         (PickVisualMedia in ImagePickerModuleImpl.java). That returns a URI the user picked, with a
+         grant attached to it, and needs neither READ_MEDIA_IMAGES nor READ_EXTERNAL_STORAGE at any
+         API level. iOS carries no NSPhotoLibraryUsageDescription for the same reason. -->
+
+    <!-- Cleartext policy lives in res/xml/network_security_config.xml rather than in an
+         android:usesCleartextTraffic flag. The React Native template wires that flag to the
+         ${usesCleartextTraffic} manifest placeholder, which the React Native Gradle plugin sets to
+         "true" for every debug variant (AgpConfiguratorUtils.kt): blanket cleartext to every host.
+         minSdkVersion is 24, and from 24 on a network security config overrides that flag outright,
+         so the flag was already inert; it is removed rather than left to describe a permission the
+         app does not take. -->
+    <application
+      android:name=".MainApplication"
+      android:label="@string/app_name"
+      android:icon="@mipmap/ic_launcher"
+      android:roundIcon="@mipmap/ic_launcher_round"
+      android:allowBackup="false"
+      android:theme="@style/AppTheme"
+      android:networkSecurityConfig="@xml/network_security_config"
+      android:supportsRtl="true">
+      <activity
+        android:name=".MainActivity"
+        android:label="@string/app_name"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:launchMode="singleTask"
+        android:windowSoftInputMode="adjustResize"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity>
+    </application>
+</manifest>

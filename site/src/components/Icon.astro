@@ -1,0 +1,100 @@
+---
+// Font Awesome Free (solid), inlined as SVG.
+//
+// WHY INLINE SVG AND NOT THE WEBFONT. Two reasons, both hard constraints here. This page is also
+// published as a single self-contained file read in an isolated frame with NO network, where a font
+// request renders as nothing; and an icon font ships every glyph to deliver a dozen. Inlining the
+// path data from @fortawesome/free-solid-svg-icons costs exactly the icons used, resolves at build
+// time, and cannot fetch anything.
+//
+// The path data is the real Font Awesome outline, imported rather than redrawn. Nothing here is a
+// hand-approximated shape, which is the failure mode of "just draw a checkmark".
+//
+// Font Awesome Free icons are CC BY 4.0. Attribution is in the footer.
+//
+// Icons, never emoji. An emoji is a character whose shape belongs to the reader's platform, so it
+// is a different picture on every device and it is not part of this brand.
+
+import {
+  faArrowRightLong,
+  faCheck,
+  faChevronRight,
+  faCircleNodes,
+  faEnvelopeOpenText,
+  faImage,
+  faLocationDot,
+  faLock,
+  faMicrophone,
+  faQrcode,
+  faRoute,
+  faTowerBroadcast,
+  faWifi,
+  faXmark,
+  type IconDefinition,
+} from '@fortawesome/free-solid-svg-icons';
+
+// The set this site is allowed to use. A closed map rather than a free-form string, so a typo is a
+// build error instead of an invisible empty box.
+const ICONS = {
+  'arrow-right-long': faArrowRightLong,
+  check: faCheck,
+  'chevron-right': faChevronRight,
+  'circle-nodes': faCircleNodes,
+  'envelope-open-text': faEnvelopeOpenText,
+  image: faImage,
+  'location-dot': faLocationDot,
+  lock: faLock,
+  microphone: faMicrophone,
+  qrcode: faQrcode,
+  route: faRoute,
+  'tower-broadcast': faTowerBroadcast,
+  wifi: faWifi,
+  xmark: faXmark,
+} satisfies Record<string, IconDefinition>;
+
+export type IconName = keyof typeof ICONS;
+
+interface Props {
+  name: IconName;
+  /** Rendered square size in px. The glyph scales inside its own viewBox. */
+  size?: number;
+  /**
+   * Accessible name. Omit for a decorative icon that sits beside text saying the same thing, which
+   * is most of them: a duplicate label is noise to a screen reader, not help.
+   */
+  label?: string;
+  class?: string;
+}
+
+const { name, size = 16, label, class: className } = Astro.props;
+
+const def = ICONS[name];
+if (def == null) {
+  throw new Error(`unknown icon "${name}". Add it to ICONS in Icon.astro deliberately.`);
+}
+
+// icon: [width, height, ligatures, unicode, pathData]
+const [vbWidth, vbHeight, , , path] = def.icon;
+const d = Array.isArray(path) ? path.join(' ') : path;
+---
+
+<svg
+  class:list={['icon', className]}
+  width={size}
+  height={size}
+  viewBox={`0 0 ${vbWidth} ${vbHeight}`}
+  fill="currentColor"
+  role={label ? 'img' : 'presentation'}
+  aria-label={label}
+  aria-hidden={label ? undefined : 'true'}
+  focusable="false"
+>
+  <path d={d} />
+</svg>
+
+<style>
+  .icon {
+    display: block;
+    flex: none;
+  }
+</style>

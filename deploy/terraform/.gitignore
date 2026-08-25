@@ -1,0 +1,23 @@
+# Provider binaries and local backend scratch. 117 MB of downloaded plugin, and
+# `terraform init` regenerates all of it.
+.terraform/
+
+# State never lives in the tree. It lives in the GCS backend, and a local copy
+# committed here would be both a secret leak and a second source of truth that
+# CI would fight.
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Deliberately NOT ignored, and both matter:
+#
+#   .terraform.lock.hcl   committed, so provider versions are identical between a
+#                         workstation and CI. Ignoring it makes a green local run
+#                         mean less than it looks.
+#
+#   *.auto.tfvars         committed, because that is where the web host and mail
+#                         provider decisions land. Terraform loads them
+#                         automatically, so the decision arrives as a reviewable
+#                         file in a pull request rather than as a code change or
+#                         as an untracked value someone holds locally.

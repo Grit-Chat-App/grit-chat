@@ -1,0 +1,66 @@
+---
+// The footer. Carries the endorsement, the two real links, and nothing else. No newsletter, no
+// social row, no fake sitemap.
+//
+// There is no trademark symbol anywhere and there never should be: "Grit" is not cleared. See
+// brand/README.md.
+
+import { Branding } from '../branding';
+import { site } from '../config';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="foot">
+  <div class="shell inner">
+    <p class="runs">
+      {Branding.runsOn}, a delay tolerant mesh protocol.
+      <a href={site.hopUrl}>Read about Hop</a>
+    </p>
+
+    <ul role="list" class="links">
+      <li><a href={site.repoUrl}>Source</a></li>
+      <li><a href={`${site.repoUrl}/blob/main/PATH.md`}>What is proven</a></li>
+    </ul>
+
+    <p class="fine">
+      {Branding.displayName} is in development. {year}.
+    </p>
+  </div>
+</footer>
+
+<style>
+  .foot {
+    margin-block-start: var(--space-section);
+    border-block-start: 1px solid var(--line);
+    background: var(--bg-deep);
+  }
+
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-l) var(--space-huge);
+    padding-block: var(--space-xxl);
+  }
+
+  .runs {
+    font-size: var(--text-secondary);
+    color: var(--fg-muted);
+    max-inline-size: 28rem;
+  }
+
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-l) var(--space-xl);
+    font-size: var(--text-secondary);
+  }
+
+  .fine {
+    flex-basis: 100%;
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-small);
+    color: var(--fg-faint);
+  }
+</style>

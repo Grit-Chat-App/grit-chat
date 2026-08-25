@@ -1,0 +1,22 @@
+{
+  "extends": "@react-native/typescript-config",
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": [
+    "**/node_modules",
+    "**/Pods",
+
+    // site/ is a separate Astro project with its own tsconfig, its own dependencies and its own
+    // typecheck (`npm run check`, which is `astro check`, and which runs in .github/workflows/site.yml).
+    //
+    // Without this exclusion the root typecheck compiles site/src/**/*.ts against the APP's
+    // TypeScript config and the app's node_modules, where `astro` is not a dependency, `.webp` and
+    // `.png` have no module declarations, and `import.meta.env` does not exist. That produced eleven
+    // errors in ci.yml's Typecheck step that had nothing to do with the app, and it had been red on
+    // this branch since the site landed.
+    //
+    // The rule this encodes: one typecheck per project, each run against the dependencies that
+    // project actually has. A root typecheck that reaches into a sibling project is not stricter,
+    // it is just wrong about which environment the files live in.
+    "site"
+  ]
+}

@@ -1,0 +1,165 @@
+---
+// The per-message route trace, drawn as documentation of a real interface element rather than as
+// decoration. This is what the app renders under every message.
+//
+// REDRAWN to the app's current shape, taken from src/components/HopTrace.tsx and src/design/status.ts
+// on feat/ux-audit at 7b23786, supplied by the agent that rebuilt it. The previous drawing here was
+// one filled dot per peer plus a vertical pipe before the terminal mark, so it grew with the journey
+// and the count had to be counted by eye. That element no longer exists in the product, and a
+// marketing page documenting a UI that was deleted is worse than one documenting a debug readout.
+//
+// THE SHAPE, five things in five fixed positions, at constant width whatever the count:
+//
+//   filled circle   arrow   count circle   arrow   terminal glyph
+//   (the sender)            (hop count)            (how it ended)
+//
+// Constant width is the point: a row of traces lines up, and a longer journey does not read as a
+// longer graphic.
+//
+// The encoding rules are the app's, in priority order: shape first, then position, then words, then
+// colour. Colour is never the only difference. Three distinct terminal silhouettes carry the state,
+// so this stays legible to a colourblind reader and in direct sunlight, and every trace still
+// carries its label. The graphic is more iconic than what it replaced, which means the words beside
+// it carry MORE of the meaning now, not less.
+
+import Icon from './Icon.astro';
+
+interface Props {
+  /**
+   * Hops the message has been through. The count is HOPS, and today every hop is through a relay,
+   * so a caption must never imply two phones reached each other directly.
+   */
+  hops: number;
+  /**
+   * Does any peer hold a copy right now? False draws the hollow count circle with no numeral, which
+   * covers both "sending" and "accepted, nobody carrying it yet". A printed 0 would read as a
+   * measured value; an empty ring reads as nothing yet.
+   */
+  held?: boolean;
+  state: 'delivered' | 'flight' | 'failed';
+  /** The app's own label. Never omitted: a glyph alone is a guess. */
+  label: string;
+  tone: 'quiet' | 'moving' | 'confirmed' | 'failed';
+}
+
+const { hops, held = true, state, label, tone } = Astro.props;
+
+// Geometry, derived the way the app derives it rather than copied as a magic number, so the two
+// cannot drift. From src/components/HopTrace.tsx and src/design/status.ts at a08faa4, which is an
+// ancestor of origin/main, so this is the shipped shape and the shape the screenshots on this page
+// were captured from.
+//
+// The count circle is sized from the WIDEST label it can hold, which is three characters because the
+// clamp is "99+" rather than "99". IBM Plex Mono advances 0.6em, so at 13px each character is 7.8px
+// and three of them is 23.4px of ink; a circle's widest chord is its diameter, so 28 leaves about
+// 2px each side. An earlier version of this file used 22, sized for two digits, which was the app's
+// own earlier bug and would have overflowed at a hop count over 99.
+const COUNT_MAX_CHARS = 3;
+const COUNT_CHAR_WIDTH = 7.8;
+const COUNT = Math.ceil(COUNT_MAX_CHARS * COUNT_CHAR_WIDTH) + 4;
+const SENDER = 10;
+const ARROW = 11;
+const TERMINAL = 15;
+
+// Three silhouettes, one per state. chevron-right covers in flight and sending.
+const TERMINAL_ICON = {
+  delivered: 'check',
+  flight: 'chevron-right',
+  failed: 'xmark',
+} as const;
+
+const numeral = hops > 99 ? '99+' : String(hops);
+---
+
+<div class="trace" data-tone={tone}>
+  <span class="graphic">
+    <span class="sender" aria-hidden="true"></span>
+    <Icon name="arrow-right-long" size={ARROW} class="arrow" />
+    <span class:list={['count', { hollow: !held }]} aria-hidden="true">
+      {held && <span class="numeral">{numeral}</span>}
+    </span>
+    <Icon name="arrow-right-long" size={ARROW} class="arrow" />
+    <Icon name={TERMINAL_ICON[state]} size={TERMINAL} class="terminal" />
+  </span>
+  <span class="label">{label}</span>
+</div>
+
+<style define:vars={{ sender: `${SENDER}px`, count: `${COUNT}px` }}>
+  .trace {
+    display: flex;
+    align-items: center;
+    gap: var(--space-m);
+    flex-wrap: wrap;
+  }
+
+  /* One job each, exactly as the app assigns them. Sage means a message provably arrived and is
+     used for nothing else on this site. The quiet tone is the app's own value, which moved in the
+     contrast pass because the old one was below AA on three of four surfaces. */
+  .trace[data-tone='quiet'] {
+    color: var(--alkali-faint);
+  }
+  .trace[data-tone='moving'] {
+    color: var(--sodium);
+  }
+  .trace[data-tone='confirmed'] {
+    color: var(--sage);
+  }
+  .trace[data-tone='failed'] {
+    color: var(--ember-bright);
+  }
+
+  .graphic {
+    display: flex;
+    align-items: center;
+    flex: none;
+  }
+
+  .sender {
+    width: var(--sender);
+    height: var(--sender);
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* 2px each side, so the arrow reads as a connector rather than as a third glyph. */
+  .arrow {
+    margin: 0 2px;
+    opacity: 0.75;
+  }
+
+  .count {
+    width: var(--count);
+    height: var(--count);
+    border-radius: 50%;
+    background: currentColor;
+    display: grid;
+    place-items: center;
+  }
+
+  /* No numeral, because nobody is carrying it yet and a printed number would be a claim. */
+  .count.hollow {
+    background: none;
+    box-shadow: inset 0 0 0 1.5px currentColor;
+  }
+
+  .numeral {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 28px;
+    /* The numeral sits on a filled circle of the tone colour, so it is the darkest ground in the
+       system rather than currentColor, which would be invisible. */
+    color: var(--abyss);
+  }
+
+  .terminal {
+    margin-left: 2px;
+  }
+
+  /* The machine layer: this is telemetry, so it is set in the instrument face, not in prose. */
+  .label {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-small);
+    color: currentColor;
+  }
+</style>

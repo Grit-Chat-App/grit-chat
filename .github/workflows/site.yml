@@ -1,0 +1,237 @@
+# The marketing site: verify on every change, deploy from main.
+#
+# WHY THIS IS A SEPARATE WORKFLOW FROM ci.yml. ci.yml runs on a macOS runner because the app needs
+# Xcode and a binary xcframework slice. The site is a static Astro build that needs neither, so
+# putting it in the same file would either pay for a macOS runner to run `npm run build` or make one
+# workflow's `runs-on` a lie about half its jobs.
+#
+# DEPLOYS RUN HERE, NEVER FROM A WORKSTATION. No local gh-pages push, no local provider CLI, no
+# hand-run deploy. If this file cannot do it, it does not get done.
+#
+# THE BUILD AND THE AUDITED ARTIFACT CANNOT DIVERGE, because they are the same commands. Both jobs
+# run `npm run build` then `npm run inline`, which is exactly what produces the self-contained
+# snapshot published for review, and the inline tool's hard gate decodes every payload rather than
+# trusting that a reference spelled data: carries a whole file. The directory that gets deployed is
+# the same site/dist that was just audited in the same job.
+#
+# WHY TWO JOBS THAT BOTH BUILD. The verify job deliberately does NOT touch the Pages API. Reading
+# the Pages URL requires Pages to be configured, and a pull request check that fails because a
+# deployment target is not set up yet is a check that reds the review for a reason unrelated to the
+# code. So verify builds against the placeholder origin and proves the tree is sound, and deploy
+# builds again once it knows the real origin, because canonical, og:url and og:image are baked at
+# build time and a social card pointing at an unresolvable host is the difference between a link
+# that looks real when it is shared and one that does not.
+#
+# WHAT MERGING THIS DOES. On a push to main the deploy job publishes to GitHub Pages and the site
+# becomes publicly reachable at the Pages URL. That is deliberate, and it is stated in the pull
+# request body, because it should be a decision rather than a discovery.
+#
+# TARGET: GitHub Pages. The repo is already on GitHub, so it needs no new vendor, no new bill and no
+# secret at all: the deploy authenticates with the workflow's own OIDC token, so there is nothing to
+# provision and nothing to rotate.
+#
+# THE PREREQUISITE, STATED PLAINLY: this repository is PRIVATE, and GitHub Pages for a private
+# repository requires a paid plan. If the plan does not cover it, the deploy job fails at
+# `configure-pages` and nothing is published; the verify job is unaffected and pull requests stay
+# green. Making the repository public also satisfies it. Both are the owner's call. This file
+# provisions nothing, creates no account and adds no secret.
+
+name: Site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'site/**'
+      - '.github/workflows/site.yml'
+  # So the first deploy can be run deliberately rather than by merging something.
+  workflow_dispatch:
+
+concurrency:
+  group: site-${{ github.ref }}
+  # A superseded pull request run is cancelled. A deploy is not: a half-applied Pages deployment is
+  # worse than a queued one.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Read-only by default. The deploy job widens this for itself and nothing else.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build and audit
+    runs-on: ubuntu-24.04
+    steps:
+      # Pinned to an exact release tag rather than a floating major, matching ci.yml: a floating tag
+      # can be repointed underneath us without a change to this file, and this file should only
+      # change behaviour when someone edits it on purpose.
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install
+        working-directory: site
+        run: npm ci
+
+      # First, because it is the cheapest check here and the only one with a legal consequence. It
+      # needs no build: it reads the tree. Its own step so a failure is attributable to the copy
+      # rather than to a build that happened to run afterwards.
+      - name: Check trademark invariants
+        working-directory: site
+        run: npm run check:trademark
+
+      # prebuild verifies the font subsets and the favicon rasters against the sources they are
+      # generated from, so a stale asset fails here rather than shipping. Running it explicitly as
+      # well makes the failure attributable to the assets rather than to the build.
+      - name: Check generated assets
+        working-directory: site
+        run: |
+          node scripts/fonts.mjs --verify
+          node scripts/favicons.mjs --verify
+
+      - name: Typecheck
+        working-directory: site
+        run: npx astro check
+
+      # No PUBLIC_SITE_ORIGIN on purpose. This job proves the tree builds and the snapshot is sound
+      # without needing a deployment target to exist.
+      - name: Build
+        working-directory: site
+        run: npm run build
+
+      - name: Audit the self-contained snapshot
+        working-directory: site
+        run: npm run inline
+
+      - name: Check the social card resolves in the build
+        working-directory: site
+        run: npm run check:social
+
+      # Uploaded on pull requests too, so a reviewer can open the exact file that was audited rather
+      # than rebuilding it to see what changed.
+      - name: Upload the reviewable snapshot
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: gritchat-site-snapshot
+          path: site/dist/gritchat-site.html
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy to Pages
+    # Never on a pull request. A fork must not be able to publish, and a branch should not either:
+    # review happens on the uploaded artifact, not on the live site.
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-24.04
+
+    # The only place write access exists in this file.
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      # This is what makes the domain ONE setting. It reports the origin the site will actually be
+      # served from, and that value is handed to the build as PUBLIC_SITE_ORIGIN. Nothing downstream
+      # hardcodes a host, so moving to a real domain later is editing one variable and a DNS record.
+      #
+      # If Pages is not available for this repository, this is the step that fails, and it fails
+      # before anything is built or published.
+      - name: Resolve the Pages URL
+        id: pages
+        uses: actions/configure-pages@v6.0.0
+
+      - name: Install
+        working-directory: site
+        run: npm ci
+
+      # base_url is the full URL including any path, which is exactly the shape PUBLIC_SITE_ORIGIN
+      # takes: astro.config.mjs splits it into `site` and `base`. A project site lives under a path,
+      # so this is the case that path handling exists for.
+      - name: Build for the real origin
+        working-directory: site
+        env:
+          PUBLIC_SITE_ORIGIN: ${{ steps.pages.outputs.base_url }}
+        run: npm run build
+
+      # Audited again, because this is a different build than the verify job made: same commands,
+      # same tree, different origin. The artifact that deploys is the one this gate just passed.
+      - name: Audit the self-contained snapshot
+        working-directory: site
+        env:
+          PUBLIC_SITE_ORIGIN: ${{ steps.pages.outputs.base_url }}
+        run: npm run inline
+
+      - name: Check the social card resolves in the build
+        working-directory: site
+        run: npm run check:social
+
+      - name: Package for Pages
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: site/dist
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5.0.0
+
+      # Do not claim a thing is live without fetching it. A green deploy proves an upload, not a
+      # served page, and an og:image that 404s cannot be seen from either. So the deployed page is
+      # fetched, its og:image URL is read out of the SERVED html rather than assumed, and that URL is
+      # fetched too.
+      - name: Prove the deployed page and its social card actually resolve
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          echo "deployed to $PAGE_URL"
+
+          # Pages can take a moment to serve a fresh deployment, so allow a few attempts. This is
+          # the difference between "not ready yet" and "not there at all", not a retry papering over
+          # a defect: the loop still fails if it never becomes ready.
+          code=000
+          for attempt in 1 2 3 4 5 6; do
+            code="$(curl -sSL -o /tmp/page.html -w '%{http_code}' "$PAGE_URL" || true)"
+            if [ "$code" = "200" ]; then break; fi
+            echo "attempt $attempt: HTTP $code, waiting"
+            sleep 10
+          done
+          test "$code" = "200"
+          echo "page served HTTP 200, $(wc -c < /tmp/page.html) bytes"
+
+          # The page has to be the site, not a Pages placeholder or an error body with a 200 on it.
+          grep -q 'Grit Chat' /tmp/page.html
+          echo "page body names the product"
+
+          og="$(grep -o 'property="og:image" content="[^"]*"' /tmp/page.html | head -1 | sed 's/.*content="//;s/"$//')"
+          test -n "$og"
+          echo "og:image is $og"
+
+          ogcode="$(curl -sSL -o /tmp/og.png -w '%{http_code}' "$og" || true)"
+          test "$ogcode" = "200"
+          echo "social card served HTTP 200, $(wc -c < /tmp/og.png) bytes"
+
+          # And it is an image rather than an HTML error page wearing a 200.
+          head -c 4 /tmp/og.png | od -An -tx1 | tr -d ' \n' | grep -qi '89504e47'
+          echo "social card is a PNG"
+
+          robotscode="$(curl -sSL -o /tmp/robots.txt -w '%{http_code}' "${PAGE_URL%/}/robots.txt" || true)"
+          test "$robotscode" = "200"
+          echo "robots.txt served HTTP 200:"
+          sed 's/^/  /' /tmp/robots.txt

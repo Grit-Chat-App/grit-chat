@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Android counterpart of the NSAppTransportSecurity block in ios/GritChat/Info.plist.
+
+  Same posture as iOS, for the same reason: the dev relay speaks plain ws://, and Android's cleartext
+  policy governs ws:// exactly as it governs http://, so the hosts the relay actually listens on need
+  naming. iOS never set NSAllowsArbitraryLoads; this file never sets a permissive base config. A
+  build that trusts every host cannot tell a misconfigured relay from a hijacked one.
+
+  What each entry is for:
+    10.0.2.2  the Android emulator's alias for the host Mac's loopback, so an emulator reaches a
+              hop-relayd on the workstation, and reaches Metro on 8081.
+    localhost
+    127.0.0.1 a physical phone with `adb reverse tcp:18765 tcp:18765` (and tcp:8081 for Metro), plus
+              the Detox instrumentation's own websocket to its test server.
+
+  PHYSICAL PHONE RUNS: a phone dialling the workstation directly rather than through adb reverse
+  needs the Mac's LAN address, measured with `ipconfig getifaddr en0`, added below as its own
+  <domain> inside this <domain-config>, and iOS needs the same address as a named
+  NSExceptionDomains entry. Nothing about that changes the base config. ADD IT FOR THE RUN AND
+  REMOVE IT BEFORE COMMITTING. A developer's private address checked in here is not a convenience,
+  it is a cleartext exception shipped to every user for a host none of them can reach, and it
+  discloses the address besides. One was committed here and in the iOS plist and has now been
+  removed.
+
+  Cleartext is not the only gate on that path. On Android 17 (SDK 37) the OS also gates
+  local-network addresses, 10.0.2.2 and a LAN IP alike, behind ACCESS_LOCAL_NETWORK. React Native's
+  own debug manifest declares it and requests it at runtime for Metro's sake, so a debug build gets
+  it for free and the relay rides along; LocalNetworkPermissionUtil never prompts in a release
+  build. So a release build pointed at a LAN relay on such a device fails whatever this file says,
+  and that is the right trade: the app is not declaring a permission that production, which dials
+  wss:// over the internet, has no use for. Proof runs are debug builds.
+
+  This file's whole scope is development. Nothing here exempts a production relay, which is wss://
+  and needs no exemption at all.
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false" />
+
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">10.0.2.2</domain>
+    <domain includeSubdomains="false">localhost</domain>
+    <domain includeSubdomains="false">127.0.0.1</domain>
+  </domain-config>
+</network-security-config>

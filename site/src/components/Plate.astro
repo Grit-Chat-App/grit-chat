@@ -1,0 +1,108 @@
+---
+// An image plate. Every plate goes through astro:assets so it gets a responsive srcset, modern
+// formats, and intrinsic width and height attributes. Those attributes are what reserve the box and
+// keep cumulative layout shift at zero, which matters more than usual here: the audience is on a bad
+// connection and a reflow costs them a tap.
+
+import { Image } from 'astro:assets';
+import type { Plate } from '../assets/manifest';
+
+interface Props {
+  plate: Plate;
+  /** Layout widths this image is asked to fill, for the srcset. */
+  sizes?: string;
+  /** Candidate widths to emit. Keep this short: every entry is a real file. */
+  widths?: number[];
+  /** Crops tall images to a band. Plates are landscape, so a ratio keeps them from dominating. */
+  ratio?: string;
+  /**
+   * Ratio below 48rem. A wide band that reads as a hero on a laptop is a 164px strip on a 375px
+   * phone, and the phone is the primary reading condition, so narrow viewports get their own crop.
+   * This lives here rather than in a page override because Plate's own `.plate[style] img` selector
+   * outranks a parent's `.wrapper img`, and losing that specificity fight silently does nothing.
+   */
+  ratioNarrow?: string;
+  loading?: 'eager' | 'lazy';
+  /** Rendered above the image as a small mono caption. Decorative plates never take one. */
+  caption?: string;
+}
+
+const {
+  plate,
+  sizes = '(min-width: 60rem) 60rem, 100vw',
+  widths = [640, 960, 1280, 1600],
+  ratio,
+  ratioNarrow,
+  loading = 'lazy',
+  caption,
+} = Astro.props;
+
+// A decorative plate carries an empty alt, and an empty alt with a caption is a contradiction: the
+// caption is content, so the image is not decorative. Fail loudly rather than ship a mismatch.
+if (plate.alt === '' && caption) {
+  throw new Error(
+    `Plate "${plate.id}" has an empty alt but was given a caption. Decide whether it is decorative.`,
+  );
+}
+
+// Never upscale: a candidate wider than the source produces a bigger file with no more detail.
+const safeWidths = widths.filter((w) => w <= plate.src.width);
+if (safeWidths.length === 0) safeWidths.push(plate.src.width);
+---
+
+<figure
+  class="plate"
+  style={[
+    ratio ? `--plate-ratio:${ratio}` : null,
+    ratioNarrow ? `--plate-ratio-narrow:${ratioNarrow}` : null,
+  ]
+    .filter(Boolean)
+    .join(';') || undefined}
+>
+  <Image
+    src={plate.src}
+    alt={plate.alt}
+    widths={safeWidths}
+    sizes={sizes}
+    loading={loading}
+    decoding={loading === 'eager' ? 'sync' : 'async'}
+    fetchpriority={loading === 'eager' ? 'high' : undefined}
+  />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .plate {
+    margin: 0;
+  }
+
+  .plate img {
+    inline-size: 100%;
+    block-size: auto;
+    border-radius: var(--radius-chip);
+    /* The plates are already dark. A hairline stops them dissolving into the page. */
+    outline: 1px solid var(--line);
+    outline-offset: -1px;
+  }
+
+  .plate[style*='--plate-ratio'] img {
+    aspect-ratio: var(--plate-ratio);
+    object-fit: cover;
+    block-size: auto;
+  }
+
+  /* Same specificity as the rule above, declared after it, so it wins below the breakpoint. */
+  @media (max-width: 48rem) {
+    .plate[style*='--plate-ratio-narrow'] img {
+      aspect-ratio: var(--plate-ratio-narrow);
+    }
+  }
+
+  figcaption {
+    margin-block-start: var(--space-m);
+    font-family: var(--font-mono);
+    font-size: var(--text-mono-small);
+    line-height: 1.5;
+    color: var(--fg-faint);
+  }
+</style>

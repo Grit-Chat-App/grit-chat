@@ -1,0 +1,270 @@
+/* Reset and element defaults. Everything here reads tokens.css and hardcodes nothing.
+ *
+ * Two decisions drive this file:
+ *
+ * 1. Dark is the only theme. Not a preference, a fact about the reading condition: this audience
+ *    is outdoors at night on a phone, and a light flash at 3am on a playa ruins night vision for
+ *    minutes. There is no light mode to toggle, so there is no toggle.
+ * 2. Text sizing is fluid but never fights the user. No px root font size, no user-scalable=no,
+ *    no maximum-scale. Every size carries a rem term so browser zoom and an operating system
+ *    font size preference both still work, and body never resolves below 17px at the default
+ *    root, because the other half of the reading condition is direct sunlight.
+ */
+
+/* ---- reset ------------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  /* Dark form controls, dark scrollbars, dark canvas before CSS paints. */
+  color-scheme: dark;
+  /* Percentage, never a px lock: this inherits whatever the user set. */
+  font-size: 100%;
+  /* Stop iOS inflating text in landscape. This does not block pinch zoom. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background-color: var(--abyss);
+  /* An in-page anchor should not land under a sticky header the parent may add. */
+  scroll-padding-block-start: var(--space-huge);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  min-block-size: 100%;
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  /* Grayscale antialiasing on a dark canvas: subpixel rendering makes alkali text on dusk look
+   * fringed and slightly bolder than it is. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-inline-size: 100%;
+}
+
+/* astro:assets emits intrinsic width and height on every image, which is what reserves the box
+ * and prevents layout shift. This keeps the aspect ratio when the width is constrained. */
+img[width][height] {
+  block-size: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* A gloved thumb is the unit of measure. */
+button,
+[role='button'],
+summary {
+  min-block-size: var(--touch-min);
+}
+
+p,
+li,
+figcaption,
+dd {
+  overflow-wrap: break-word;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+ul[role='list'],
+ol[role='list'] {
+  list-style: none;
+  padding-inline-start: 0;
+}
+
+hr {
+  border: 0;
+  block-size: 1px;
+  background-color: var(--line);
+}
+
+::selection {
+  background-color: var(--sodium);
+  color: var(--sodium-deep);
+}
+
+/* ---- type defaults ------------------------------------------------------------------------
+ * So a page written in plain HTML is already correct before a single component exists.
+ */
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-display);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--text-hero);
+}
+
+h2 {
+  font-size: var(--text-display);
+}
+
+h3 {
+  font-size: var(--text-title);
+}
+
+h4 {
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-lead);
+  line-height: var(--leading-snug);
+  letter-spacing: normal;
+}
+
+small {
+  font-size: var(--text-secondary);
+  color: var(--fg-muted);
+}
+
+strong,
+b {
+  font-weight: var(--weight-semibold);
+}
+
+/* The machine layer. Addresses, hop counts, relay URLs, delivery traces. Setting these in an
+ * instrument face keeps them from being read as prose. */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  font-variant-ligatures: none;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  transition: color var(--motion-fast) var(--ease-out);
+}
+
+a:hover {
+  color: var(--sodium);
+  text-decoration-thickness: 2px;
+}
+
+/* ---- focus ---------------------------------------------------------------------------------
+ * WCAG 2.2 focus appearance. The sodium ring is at least 2px thick on the whole perimeter, and
+ * the abyss halo sits between the ring and the element so the ring keeps its 3:1 contrast even
+ * when the focused thing is itself a sodium fill. Nothing here removes an outline.
+ */
+
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  box-shadow: 0 0 0 calc(var(--focus-width) + var(--focus-offset)) var(--focus-halo);
+}
+
+/* ---- skip link ------------------------------------------------------------------------------
+ * A real one: present in the DOM, reachable by the first Tab, off screen until it has focus.
+ * Never display:none, which would make it unfocusable and therefore fake.
+ */
+
+.skip-link {
+  position: fixed;
+  inset-block-start: var(--space-s);
+  inset-inline-start: var(--space-s);
+  z-index: 100;
+  padding: var(--space-m) var(--space-l);
+  border-radius: var(--radius-chip);
+  background-color: var(--sodium);
+  color: var(--sodium-deep);
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-action);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--space-xl)));
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+/* :focus as well as :focus-visible. A skip link has exactly one job and it must appear whenever it
+ * holds focus, by whatever route focus arrived: keyboard, programmatic focus from a script or an
+ * assistive technology, or a browser restoring focus after navigation. Gating it on :focus-visible
+ * alone leaves it sitting off screen while genuinely focused, which is a skip link that lies. */
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* ---- utilities -------------------------------------------------------------------------------
+ * The only two the layout needs. Everything else belongs to a component.
+ */
+
+.visually-hidden:not(:focus):not(:active) {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.shell {
+  inline-size: 100%;
+  max-inline-size: var(--width-shell);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/* ---- reduced motion ---------------------------------------------------------------------------
+ * tokens.css already zeroes the duration tokens. This catches anything that set a duration
+ * without reading one.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,103 @@
+---
+// The document shell. Every page renders through this, and this is the only file that owns <head>.
+//
+// It deliberately provides no navigation, no footer content and no chrome: those arrive through
+// the named header and footer slots so page composition stays with the pages.
+//
+// It also owns no brand asset. There is no rel=icon, no apple-touch-icon and no default og:image
+// here because this file owns head structure only; icons arrive through the head slot below, from
+// components/BrandHead.astro.
+
+import { Branding } from '../branding';
+import { site } from '../config';
+import tokensCss from '../styles/tokens.css?raw';
+
+import '../styles/fonts.css';
+import '../styles/tokens.css';
+import '../styles/base.css';
+
+interface Props {
+  /** The page's own title. The product name is appended, never written into the string. */
+  title: string;
+  /** One sentence. Used for the meta description and for the social card. */
+  description: string;
+  /** Optional absolute URL or site-root-relative path to a social card image. No default. */
+  ogImage?: string;
+}
+
+const { title, description, ogImage } = Astro.props;
+
+// A single source of truth for the browser chrome colour: read the real token rather than
+// restating the hex. If the token is renamed or reformatted, the build fails here instead of the
+// address bar quietly drifting away from the page.
+const nightToken = /--night:\s*(#[0-9a-fA-F]{6})\s*;/.exec(tokensCss);
+if (!nightToken) {
+  throw new Error(
+    'tokens.css must define --night as a six digit hex. The theme-color meta tag reads it at build time.',
+  );
+}
+const themeColor = nightToken[1];
+
+const pageTitle = title === Branding.displayName ? title : `${title} | ${Branding.displayName}`;
+const canonical = new URL(Astro.url.pathname, site.origin).href;
+const ogImageUrl = ogImage ? new URL(ogImage, site.origin).href : undefined;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    {/* No maximum-scale and no user-scalable=no: pinch zoom is how people read outdoors. */}
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    {/* Preload only the two faces above the fold: the display face and body regular. The semibold
+        and mono faces are fetched when something actually needs them. crossorigin is required for
+        fonts even same origin, or the preload is fetched twice. */}
+    <link
+      rel="preload"
+      href="/fonts/barlow-condensed-bold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="preload" href="/fonts/barlow-regular.woff2" as="font" type="font/woff2" crossorigin />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content={themeColor} />
+    <meta name="generator" content={Astro.generator} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={Branding.displayName} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content="en_US" />
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+
+    <meta name="twitter:card" content={ogImageUrl ? 'summary_large_image' : 'summary'} />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
+
+    {/* Last in head, so a page can add to it without this file owning a single brand asset.
+        Icon links, mask and manifest bits come through here. */}
+    <slot name="head" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <slot name="header" />
+
+    {/* tabindex allows the skip link to actually move focus here, not just scroll. */}
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+
+    <slot name="footer" />
+  </body>
+</html>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification small icon: the hop trace motif, two nodes, two links and a terminal bar on one
+     line. Monochrome white; the system tints it. Small icons must be flat alpha. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M2,12 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 z" />
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M8,11 h3 v2 h-3 z" />
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M10,12 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0 z" />
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M16,11 h3 v2 h-3 z" />
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M20,7 h2 v10 h-2 z" />
+</vector>

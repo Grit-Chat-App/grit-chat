@@ -1,0 +1,63 @@
+buildscript {
+    ext {
+        buildToolsVersion = "37.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 37
+        targetSdkVersion = 36
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.2.0"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+// Where sh.hop:hop comes from. The artifact is NOT on any Maven repository: it is a development
+// build of the Hop Android SDK, vendored into this repo exactly as the iOS xcframework is, from the
+// SAME hop commit (main 54a2e82) so the two platforms speak one ABI. Provenance and the revert plan
+// live in vendor/README-android-artifact.md.
+//
+// @hop-mesh/react-native reads this ext property first (before HOP_MAVEN_REPOSITORY and before its
+// own module-relative default), so setting it here is the whole wiring.
+ext.hopMavenRepository = file("$rootDir/../vendor/hop-android-maven/maven-repository").absolutePath
+
+
+// Declaring the repository on the ext property alone is NOT enough, and the way it fails is worth
+// recording: @hop-mesh/react-native declares this repository inside its OWN repositories block, but
+// gradle resolves a project dependency's transitives using the CONSUMING project's repositories. So
+// :app:debugRuntimeClasspath went looking for sh.hop:hop on Maven Central, Google and jitpack and
+// nowhere else, and failed with "Could not find sh.hop:hop:0.0.5" listing three remotes and not the
+// local one. Worse, :app:tasks and :app:dependencies both succeed while this is broken, so a
+// configuration-only check reads green. Every project therefore gets the repository, scoped by
+// includeGroup so it is never consulted for anything but sh.hop.
+allprojects {
+    repositories {
+        maven {
+            url = uri(rootProject.ext.hopMavenRepository)
+            content { includeGroup "sh.hop" }
+        }
+    }
+}
+// The repository is expanded from ONE committed archive and the expansion is gitignored, so a fresh
+// clone has the zip and not the tree. Without this check the failure is gradle's generic
+// "Could not find sh.hop:hop:0.0.5" wall listing every repository it tried, which names neither the
+// prerequisite nor the fix. Name both.
+gradle.projectsEvaluated {
+    if (!file("${ext.hopMavenRepository}/sh/hop/hop").isDirectory()) {
+        throw new GradleException(
+            "The vendored Hop Android repository is not expanded yet.\n" +
+            "Run this once from the repo root:\n" +
+            "  bash scripts/fetch-android-hop-maven.sh\n" +
+            "It verifies the archive's sha256 against the provenance in " +
+            "vendor/README-android-artifact.md before expanding it."
+        )
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"

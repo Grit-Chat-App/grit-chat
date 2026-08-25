@@ -1,0 +1,17 @@
+{
+  "name": "gritchat-brand-tools",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Generates every Grit Chat brand asset from committed geometry. Nothing here is drawn by hand or by an image model: see brand/README.md for the derivation.",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "sheets": "node tools/sheets.mjs"
+  },
+  "devDependencies": {
+    "opentype.js": "^1.3.4"
+  },
+  "dependencies": {
+    "marked": "^18.0.10"
+  }
+}

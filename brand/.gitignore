@@ -1,0 +1,9 @@
+node_modules/
+
+# Derived output. Regenerate with `node tools/proof.mjs`, `node tools/brief.mjs` and
+# `node tools/brief-doc.mjs`. These are evidence and deliverables, not source, and between them they
+# are most of a megabyte of base64 and rasters that a one line command reproduces.
+proof/
+explore/
+brief.html
+grit-chat-brief.html
