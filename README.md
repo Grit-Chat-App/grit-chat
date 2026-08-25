@@ -19,7 +19,7 @@ the only file that changes when the SDK surface moves.
 | `ios/` | The React Native Xcode project, plus dev CocoaPods pinned in `ios/hop-pods/`. |
 | `Sources/GritRelayNode/` | The proof harness. Not a product feature: it is the second, independent Hop node for the proof ladder in `PATH.md`. |
 | `vendor/` | Dev-pinned Hop artifacts (SDK tarball, xcframework, local SwiftPM package), all built from hop main `54a2e82`. |
-| `e2e/` | The Detox suite: 14 scenarios, 81 steps, every scenario class sabotage-proven. |
+| `e2e/` | The Detox suite: 14 scenarios, 83 steps, every scenario class sabotage-proven. |
 
 ## Status, honestly
 

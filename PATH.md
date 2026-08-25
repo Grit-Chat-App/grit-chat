@@ -303,7 +303,7 @@ different one. Neither value is something to match against.
 
 ## The Detox suite, and how it was proven to fail
 
-Fourteen scenarios, eighty one steps, against the iOS simulator only, covering the flows the rungs
+Fourteen scenarios, eighty three steps, against the iOS simulator only, covering the flows the rungs
 above prove: the designed empty state, add contact by pasted address and refusal of a bad one,
 delivery progression to `delivered via 2 hops` against a live relay and listener, a channel
 publication with its verified writer, a voice note recorded and delivered with its play control, a
@@ -348,7 +348,7 @@ scenarios were sabotaged again as they landed:
 | rewrite the fan-out copy to say host-only | `fan-out not named plainly: "SABOTAGE: ..."` |
 | break the permission message to a generic one | the unit test fails: expected "Location permission is off", got the sabotage text |
 
-After every restore the full suite runs green again (14 scenarios, 81 steps).
+After every restore the full suite runs green again (14 scenarios, 83 steps).
 
 What the suite does not claim: the composer's send BUTTON is not driven (any text entry raises the
 keyboard and the button sits under it; the composer submits on the return key, which is the path
