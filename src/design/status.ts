@@ -181,13 +181,13 @@ export function relayPlain(state: RelayStateName): string {
     case 'up':
       return 'A relay link is open. It can carry packets, but only a delivered message proves that a Hop relay accepted them.';
     case 'connecting':
-      return 'Dialing your relay. Until the link is open, messages can still travel only over a live Bluetooth or local-network link.';
+      return 'Dialing your relay. Until the link is open, a message may still travel over a live Bluetooth or local-network link.';
     case 'retrying':
-      return 'Your relay is offline. The app retries after the interval shown below. Messages can still travel over a live Bluetooth or local-network link.';
+      return 'Your relay is offline. The app retries after the interval shown below. A message may still travel over a live Bluetooth or local-network link.';
     case 'down':
-      return 'Your relay is offline. Messages can still travel over a live Bluetooth or local-network link; otherwise check the endpoint on the connection screen.';
+      return 'Your relay is offline. A message may still travel over a live Bluetooth or local-network link; otherwise check the endpoint on the connection screen.';
     case 'unconfigured':
-      return 'No relay is configured. Messages can still travel over a live Bluetooth or local-network link; otherwise ask your relay operator for a supported WSS endpoint, then set it on the connection screen.';
+      return 'No relay is configured. A message may still travel over a live Bluetooth or local-network link; otherwise ask your relay operator for a supported WSS endpoint, then set it on the connection screen.';
   }
 }
 

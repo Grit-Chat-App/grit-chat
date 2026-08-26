@@ -23,18 +23,19 @@ export const Branding = {
     'You have an address. Nobody else has it until you show it to them, or they show you theirs.',
 
   /**
-   * Honest transport summary. This build has native Bluetooth and local-network bearers as well
-   * as a relay: local delivery still needs the OS permission, an active direct link, and a peer
-   * address. Nothing is discovered automatically.
+   * Honest transport summary. This build includes native Bluetooth and local-network bearers as
+   * well as a relay. A local delivery still needs the OS permission, an active direct link, and a
+   * peer address. Nothing is discovered automatically, and no physical local receipt is claimed.
    */
   transportReality:
-    'No phone number, no account, no server that can read your messages. This build can carry a ' +
-    'message through Bluetooth, a local network, or a relay. Local delivery needs your permission, ' +
-    'a live direct link, and the other person’s address. Nobody is discovered automatically.',
+    'No phone number, no account, no server that can read your messages. This build includes ' +
+    'Bluetooth, local-network, and relay paths. Local delivery needs your permission, a live direct ' +
+    'link, and the other person’s address. Nobody is discovered automatically, and a physical local ' +
+    'receipt is not confirmed yet.',
 
   /** Shown when no relay endpoint is configured. There is deliberately no default to fall back to. */
   relayUnconfigured:
-    'No relay configured. Messages can still travel over a live Bluetooth or local-network link; ' +
+    'No relay configured. A message may still travel over a live Bluetooth or local-network link; ' +
     'otherwise ask an operator for a WSS endpoint, then set it below or build with GRIT_RELAY_URL set.',
 
   /**
