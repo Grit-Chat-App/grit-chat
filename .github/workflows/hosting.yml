@@ -105,6 +105,18 @@ jobs:
           terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           terraform apply -input=false -auto-approve -no-color
 
+      # CustomDomain creation returns before Firebase has populated
+      # required_dns_updates. Refresh state once, without changing resources,
+      # before reporting the generated RRsets to the DNS workflow.
+      - name: Refresh Firebase DNS discovery state
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT }}
+          TF_VAR_hosting_site_id: ${{ secrets.FIREBASE_HOSTING_SITE_ID }}
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+          terraform apply -refresh-only -input=false -auto-approve -no-color
+
       # Values stay in state. DNS reads them directly from the same private
       # backend, so the job reports only whether discovery produced data.
       - name: Report discovery state without disclosing DNS values
