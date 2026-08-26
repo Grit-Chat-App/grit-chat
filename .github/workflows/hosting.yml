@@ -54,14 +54,14 @@ jobs:
   plan:
     needs: static
     runs-on: ubuntu-24.04
-    if: github.event_name != 'pull_request' && vars.TF_WIF_PROVIDER != '' && vars.TF_SERVICE_ACCOUNT != '' && vars.GCP_PROJECT != '' && vars.FIREBASE_HOSTING_SITE_ID != '' && vars.TF_STATE_BUCKET != ''
+    if: github.event_name != 'pull_request' && vars.GRIT_CI_CONFIGURED == 'true'
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: google-github-actions/auth@v3.0.0
         with:
-          project_id: ${{ vars.GCP_PROJECT }}
-          workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
-          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+          workload_identity_provider: ${{ secrets.TF_WIF_PROVIDER }}
+          service_account: ${{ secrets.TF_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
       - uses: hashicorp/setup-terraform@v4.0.1
@@ -70,10 +70,10 @@ jobs:
       - name: Plan Hosting control plane
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
-          TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
-          TF_VAR_hosting_site_id: ${{ vars.FIREBASE_HOSTING_SITE_ID }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT }}
+          TF_VAR_hosting_site_id: ${{ secrets.FIREBASE_HOSTING_SITE_ID }}
         run: |
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           terraform plan -input=false -no-color
 
   apply:
@@ -81,20 +81,16 @@ jobs:
     runs-on: ubuntu-24.04
     if: >-
       github.event_name != 'pull_request' &&
-      vars.TF_WIF_PROVIDER != '' &&
-      vars.TF_SERVICE_ACCOUNT != '' &&
-      vars.GCP_PROJECT != '' &&
-      vars.FIREBASE_HOSTING_SITE_ID != '' &&
-      vars.TF_STATE_BUCKET != '' &&
+      vars.GRIT_CI_CONFIGURED == 'true' &&
       vars.GRIT_HOSTING_CONTROL_PLANE_APPLY_ENABLED == 'true' &&
       (github.event_name != 'workflow_dispatch' || inputs.apply)
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: google-github-actions/auth@v3.0.0
         with:
-          project_id: ${{ vars.GCP_PROJECT }}
-          workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
-          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+          workload_identity_provider: ${{ secrets.TF_WIF_PROVIDER }}
+          service_account: ${{ secrets.TF_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
       - uses: hashicorp/setup-terraform@v4.0.1
@@ -103,10 +99,10 @@ jobs:
       - name: Apply Hosting control plane
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
-          TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
-          TF_VAR_hosting_site_id: ${{ vars.FIREBASE_HOSTING_SITE_ID }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT }}
+          TF_VAR_hosting_site_id: ${{ secrets.FIREBASE_HOSTING_SITE_ID }}
         run: |
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           terraform apply -input=false -auto-approve -no-color
 
       # Values stay in state. DNS reads them directly from the same private
