@@ -158,41 +158,36 @@ export interface RelayView {
 export function relayView(state: RelayStateName): RelayView {
   switch (state) {
     case 'up':
-      return {glyph: 'signal', label: 'relay carrying', tone: 'confirmed', underline: true};
+      return {glyph: 'signal', label: 'relay link open', tone: 'confirmed', underline: true};
     case 'connecting':
       return {glyph: 'circle-o', label: 'relay dialing', tone: 'moving', underline: false};
     case 'retrying':
-      // Every pooled candidate is backed off, but the pool still knows where to retry and the
-      // backoff always eventually recovers. This is NOT offline, and showing "down" here would
-      // send someone debugging a relay that is about to come back on its own.
       return {glyph: 'refresh', label: 'relay retrying', tone: 'moving', underline: false};
     case 'down':
-      return {glyph: 'chain-broken', label: 'relay down', tone: 'failed', underline: false};
+      return {glyph: 'chain-broken', label: 'relay offline', tone: 'failed', underline: false};
     case 'unconfigured':
-      // Not a failure: nothing was asked for. Showing "down" here would read as a broken relay
-      // rather than an empty setting, and would send someone debugging the wrong thing.
-      return {glyph: 'ban', label: 'relay not set', tone: 'quiet', underline: false};
+      return {glyph: 'ban', label: 'relay not configured', tone: 'quiet', underline: false};
   }
 }
 
 /**
  * A plain-language sentence for the expanded relay indicator, in the words a person uses. The pill
- * itself already carries the short state ("relay not set", "relay carrying") through relayView; this
- * is what it says when someone asks why. It is never the raw pool line: that is machine-generated
- * and belongs under this, in the mono face, not in front of a person opening a messenger.
+ * itself already carries the short state through relayView; this is what it says when someone asks
+ * why. It is never the raw pool line: that is machine-generated and belongs under this, in the mono
+ * face, not in front of a person opening a messenger.
  */
 export function relayPlain(state: RelayStateName): string {
   switch (state) {
     case 'up':
-      return 'Your relay link is open, so messages can leave this device. A delivered message is the only proof a relay accepted anything.';
+      return 'A relay link is open. It can carry packets, but only a delivered message proves that a Hop relay accepted them.';
     case 'connecting':
       return 'Dialing your relay. Until the link is open, messages cannot leave this device.';
     case 'retrying':
-      return 'Your relay is not answering right now, so the app keeps trying. Messages wait on this device until it answers.';
+      return 'Your relay is offline. The app retries after the interval shown below, and messages wait on this device until it answers.';
     case 'down':
-      return 'Your relay link is down. Messages cannot leave this device until it is back. You can check the relay on the connection screen.';
+      return 'Your relay is offline. Messages cannot leave this device until it is back. Check the endpoint on the connection screen.';
     case 'unconfigured':
-      return 'No relay is set, so messages cannot leave this device. Grit Chat talks through a relay today; set one on the connection screen.';
+      return 'No relay is configured, so messages cannot leave this device. Ask your relay operator for a supported WSS endpoint, then set it on the connection screen.';
   }
 }
 

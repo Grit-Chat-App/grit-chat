@@ -110,12 +110,16 @@ export function IdentityScreen({navigation}: Props): React.JSX.Element {
             {localNetworkHint(seam.relayUrl(), relay.state)}
           </Note>
         ) : null}
+        <Note testID="identity-relay-guidance">
+          Set an operator-provided WSS endpoint here. A development relay can disappear, and a link
+          opening never proves delivery.
+        </Note>
         <Field
           testID="identity-relay-input"
-          label="Endpoint"
+          label="Operator relay endpoint"
           value={draft}
           onChangeText={setDraft}
-          placeholder="ws://127.0.0.1:18765/"
+          placeholder="wss://relay.example/"
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -126,15 +130,11 @@ export function IdentityScreen({navigation}: Props): React.JSX.Element {
           busy={busy}
           testID="identity-relay-apply"
         />
-        {config.relayUrl != null ? (
-          <Text style={styles.mono} testID="identity-relay-config">
-            built with {config.relayUrl}
-          </Text>
-        ) : (
-          <Text style={styles.mono} testID="identity-relay-config">
-            built with no relay configured
-          </Text>
-        )}
+        <Text style={styles.mono} testID="identity-relay-config">
+          {config.relayUrl != null
+            ? 'build supplied an endpoint; delivery confirms it is usable'
+            : 'built with no relay configured'}
+        </Text>
         {note != null ? <Note testID="identity-note">{note}</Note> : null}
 
         <View style={styles.divider} />
