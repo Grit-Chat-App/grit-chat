@@ -23,19 +23,19 @@ export const Branding = {
     'You have an address. Nobody else has it until you show it to them, or they show you theirs.',
 
   /**
-   * Honest transport summary. Every clause here is a fact about this build, not a roadmap: the React
-   * Native Hop SDK ships no Bluetooth or local-network bearer, so a relay is the only way a message
-   * leaves this device, and nothing is discovered automatically.
+   * Honest transport summary. This build has native Bluetooth and local-network bearers as well
+   * as a relay: local delivery still needs the OS permission, an active direct link, and a peer
+   * address. Nothing is discovered automatically.
    */
   transportReality:
-    'No phone number, no account, no server that can read your messages. This build reaches other ' +
-    'devices through a relay only: the React Native Hop SDK ships no Bluetooth or local-network ' +
-    'bearer yet, so nobody is discovered automatically and a peer is reached by knowing its address.',
+    'No phone number, no account, no server that can read your messages. This build can carry a ' +
+    'message through Bluetooth, a local network, or a relay. Local delivery needs your permission, ' +
+    'a live direct link, and the other person’s address. Nobody is discovered automatically.',
 
   /** Shown when no relay endpoint is configured. There is deliberately no default to fall back to. */
   relayUnconfigured:
-    'No relay configured, so messages cannot leave this device. Set a relay endpoint below, or ' +
-    'build with GRIT_RELAY_URL set.',
+    'No relay configured. Messages can still travel over a live Bluetooth or local-network link; ' +
+    'otherwise ask an operator for a WSS endpoint, then set it below or build with GRIT_RELAY_URL set.',
 
   /**
    * What relay "carrying" does and does not mean. The bearer moves opaque bytes and cannot read the
