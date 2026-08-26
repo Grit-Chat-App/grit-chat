@@ -745,6 +745,19 @@ are stored in the private evidence record at
 ### Limits
 
 The current proof build packages native BLE and LAN bearer implementations beside RelayBearer.
-Neither direct path has a physical nonce receipt in this record: the Test iPhone XR's current LAN
-manager reports iOS Local Network `NoAuth` pending interactive approval. Channels remain blocked
-for release by the missing published ABI 6 SDK.
+Neither direct path has a physical nonce receipt in this record.
+
+On 2026-08-26, physical Pixel 7 build `cf3a563` ran with Relay disabled and BLE selected against
+physical Test iPhone XR build `cf3a563+clean-after-ble`. The Pixel sent
+`GCPHYS-BLE-08785E1A-DD4C-405E-A5C4-58AEF765088A`; its rendered result was:
+
+```text
+FAIL: delivered=false relayed=0 forwardHops=0 via ble, relay=disabled in 31144 ms
+```
+
+The iPhone's device log stayed at `links=0`, with no receipt of that nonce. Pixel had
+Bluetooth Scan, Connect, and Advertise permission grants. iPhone's LAN manager returned iOS Local
+Network `NoAuth`, while CoreBluetooth authorization remained not determined. This is a precise
+failed direct-bearer run, not a delivery. It can only proceed after the person holding the iPhone
+handles those system permission prompts. Channels remain blocked for release by the missing
+published ABI 6 SDK.
