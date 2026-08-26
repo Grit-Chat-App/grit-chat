@@ -18,5 +18,5 @@ resource "google_dns_record_set" "firebase" {
   name         = each.value.name
   type         = each.value.type
   ttl          = var.record_ttl
-  rrdatas      = each.value.rrdatas
+  rrdatas      = local.firebase_dns_rrdatas[each.key]
 }
