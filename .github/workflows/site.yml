@@ -89,9 +89,7 @@ jobs:
     needs: verify
     if: >-
       github.event_name != 'pull_request' &&
-      vars.TF_WIF_PROVIDER != '' &&
-      vars.TF_SERVICE_ACCOUNT != '' &&
-      vars.GCP_PROJECT != '' &&
+      vars.GRIT_CI_CONFIGURED == 'true' &&
       vars.GRIT_HOSTING_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-24.04
     permissions:
@@ -113,9 +111,9 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3.0.0
         with:
-          project_id: ${{ vars.GCP_PROJECT }}
-          workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
-          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+          workload_identity_provider: ${{ secrets.TF_WIF_PROVIDER }}
+          service_account: ${{ secrets.TF_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
 
@@ -142,7 +140,7 @@ jobs:
 
       - name: Publish static files
         env:
-          FIREBASE_PROJECT: ${{ vars.GCP_PROJECT }}
+          FIREBASE_PROJECT: ${{ secrets.GCP_PROJECT }}
         run: firebase deploy --only hosting --project "$FIREBASE_PROJECT" --non-interactive
 
       # This proves the upload reached Firebase Hosting. It deliberately does
@@ -150,7 +148,7 @@ jobs:
       # cannot activate until GoDaddy delegates to the complete Cloud DNS zone.
       - name: Prove the default Hosting site serves this artifact
         env:
-          FIREBASE_PROJECT: ${{ vars.GCP_PROJECT }}
+          FIREBASE_PROJECT: ${{ secrets.GCP_PROJECT }}
         run: |
           set -euo pipefail
           code="$(curl -sS -o /tmp/site.html -w '%{http_code}' "https://${FIREBASE_PROJECT}.web.app" || true)"

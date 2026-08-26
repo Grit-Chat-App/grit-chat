@@ -10,14 +10,11 @@
 # hole rather than a convenience. `static` is the only job a pull request runs,
 # and it needs no credential at all.
 #
-# GATE 2, the credential. Every authenticated job carries
-# `if: vars.TF_WIF_PROVIDER != ''`. With no variable set the job SKIPS rather
-# than failing red. That matters because of a defect this repository already hit
-# once: a deploy job that fails on a settings prerequisite parks a red check on
-# `main` that every later pull request displays, for a reason that is not a code
-# defect. Skipping is honest here in a way that swallowing a real failure would
-# not be, because the skip means "no credential exists" rather than "the apply
-# worked".
+# GATE 2, the credential. Permanent operator values live in GitHub secrets and
+# authenticated jobs are armed only by the non-secret `GRIT_CI_CONFIGURED`
+# readiness flag. With that flag absent the jobs SKIP rather than failing red.
+# A bootstrap run sets the trust and backend first; it never introduces a
+# long-lived key into the repository.
 #
 # GATE 3, the arming switch. `apply` additionally requires
 # `vars.GRIT_DNS_APPLY_ENABLED == 'true'`. Gate 2 alone is not enough: the moment
@@ -93,15 +90,15 @@ jobs:
     # A plan is meaningful only after trusted CI configuration exists. Missing
     # configuration skips cleanly; a present configuration with missing Hosting
     # state fails, which is the correct fail-closed result.
-    if: github.event_name != 'pull_request' && vars.TF_WIF_PROVIDER != '' && vars.TF_SERVICE_ACCOUNT != '' && vars.GCP_PROJECT != '' && vars.TF_STATE_BUCKET != ''
+    if: github.event_name != 'pull_request' && vars.GRIT_CI_CONFIGURED == 'true'
     steps:
       - uses: actions/checkout@v7.0.1
 
       - uses: google-github-actions/auth@v3.0.0
         with:
-          project_id: ${{ vars.GCP_PROJECT }}
-          workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
-          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+          workload_identity_provider: ${{ secrets.TF_WIF_PROVIDER }}
+          service_account: ${{ secrets.TF_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
 
@@ -113,7 +110,7 @@ jobs:
         working-directory: ${{ env.HOSTING_TF_WORKING_DIR }}
         run: |
           set -euo pipefail
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           terraform output -json firebase_dns_records > "$RUNNER_TEMP/firebase-dns-records.json"
           jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-records.json" >/dev/null
           jq '{firebase_dns_records: .}' "$RUNNER_TEMP/firebase-dns-records.json" > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
@@ -121,9 +118,9 @@ jobs:
       - name: Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
-          TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT }}
         run: |
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           terraform plan -input=false -no-color -var-file="$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
 
   apply:
@@ -131,10 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event_name != 'pull_request' &&
-      vars.TF_WIF_PROVIDER != '' &&
-      vars.TF_SERVICE_ACCOUNT != '' &&
-      vars.GCP_PROJECT != '' &&
-      vars.TF_STATE_BUCKET != '' &&
+      vars.GRIT_CI_CONFIGURED == 'true' &&
       vars.GRIT_DNS_APPLY_ENABLED == 'true' &&
       (github.event_name != 'workflow_dispatch' || inputs.apply)
     steps:
@@ -142,9 +136,9 @@ jobs:
 
       - uses: google-github-actions/auth@v3.0.0
         with:
-          project_id: ${{ vars.GCP_PROJECT }}
-          workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
-          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          project_id: ${{ secrets.GCP_PROJECT }}
+          workload_identity_provider: ${{ secrets.TF_WIF_PROVIDER }}
+          service_account: ${{ secrets.TF_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
 
@@ -156,7 +150,7 @@ jobs:
         working-directory: ${{ env.HOSTING_TF_WORKING_DIR }}
         run: |
           set -euo pipefail
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           terraform output -json firebase_dns_records > "$RUNNER_TEMP/firebase-dns-records.json"
           jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-records.json" >/dev/null
           jq '{firebase_dns_records: .}' "$RUNNER_TEMP/firebase-dns-records.json" > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
@@ -164,9 +158,9 @@ jobs:
       - name: Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
-          TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT }}
         run: |
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
           terraform apply -input=false -auto-approve -no-color -var-file="$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
 
 

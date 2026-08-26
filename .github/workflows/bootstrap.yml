@@ -25,7 +25,7 @@ jobs:
   bootstrap:
     # workflow_dispatch can target a branch. Refuse every branch except the
     # default branch before any step materializes the temporary OAuth secret.
-    if: github.event.repository.default_branch == 'main' && github.ref == 'refs/heads/main'
+    if: github.event.repository.default_branch == 'main' && github.ref == 'refs/heads/main' && vars.GRIT_BOOTSTRAP_READY == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -38,11 +38,12 @@ jobs:
       - name: Create the permanent CI trust and state backend
         env:
           CLOUDSDK_AUTH_ACCESS_TOKEN: ${{ secrets.GCP_BOOTSTRAP_ACCESS_TOKEN }}
-          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
-          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-          TF_STATE_BUCKET_LOCATION: ${{ vars.TF_STATE_BUCKET_LOCATION }}
-          TF_SERVICE_ACCOUNT_ID: ${{ vars.TF_SERVICE_ACCOUNT_ID }}
-          WIF_POOL_ID: ${{ vars.WIF_POOL_ID }}
-          WIF_PROVIDER_ID: ${{ vars.WIF_PROVIDER_ID }}
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_BUCKET_LOCATION: ${{ secrets.TF_STATE_BUCKET_LOCATION }}
+          TF_SERVICE_ACCOUNT_ID: ${{ secrets.TF_SERVICE_ACCOUNT_ID }}
+          TF_SERVICE_ACCOUNT: ${{ secrets.TF_SERVICE_ACCOUNT }}
+          WIF_POOL_ID: ${{ secrets.WIF_POOL_ID }}
+          WIF_PROVIDER_ID: ${{ secrets.WIF_PROVIDER_ID }}
           WIF_PRINCIPAL_SET: ${{ secrets.WIF_PRINCIPAL_SET }}
         run: bash scripts/bootstrap-ci.sh
