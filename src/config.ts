@@ -50,6 +50,15 @@ export function definedOrNull(value: string | undefined): string | null {
 
 export type OpenScreen = 'conversations' | 'chat' | 'add-contact' | 'identity' | 'channel' | 'new-channel';
 
+/** A single native radio selected for an explicitly isolated physical proof. */
+export type ProofBearer = 'ble' | 'lan';
+
+/** Reject unsupported proof modes instead of silently running a relay or mixed-bearer test. */
+export function parseProofBearer(value: string | null): ProofBearer | null {
+  return value === 'ble' || value === 'lan' ? value : null;
+}
+
+
 export interface AppConfig {
   /** The relay to dial, or null when unconfigured. Null is a state the UI shows, never a default. */
   relayUrl: string | null;
@@ -59,6 +68,12 @@ export interface AppConfig {
   proofPeer: string | null;
   /** Nonce the receiving node matches on, from --grit-proof-nonce. */
   proofNonce: string | null;
+  /**
+   * A native bearer selected by --grit-proof-bearer. When set, startup disconnects relay and
+   * disables the other local bearer before any proof send.
+   */
+  proofBearer: ProofBearer | null;
+
   /**
    * Dev-only screen override from --grit-screen. Exists so a machine with no tap tool can still
    * open chat, add-contact and identity and look at them. Production launches never pass this.
@@ -119,6 +134,8 @@ export function readConfig(): AppConfig {
       proofPeer: null,
       proofNonce: null,
       openScreen: null,
+      proofBearer: null,
+
       chatPeer: null,
       channelPath: null,
       channelProofPath: null,
@@ -132,6 +149,12 @@ export function readConfig(): AppConfig {
   const constants = native.getConstants != null ? native.getConstants() : (native as unknown as GritConfigConstants);
   const url = (constants.relayUrl ?? '').trim();
   const args = constants.launchArguments ?? [];
+  const proofBearerRaw = argAfter(args, '--grit-proof-bearer');
+  const proofBearer = parseProofBearer(proofBearerRaw);
+  if (args.includes('--grit-proof-bearer') && proofBearer == null) {
+    throw new Error('Expected --grit-proof-bearer to be either "ble" or "lan".');
+  }
+
 
   return {
     // An unsubstituted build setting would arrive as the literal "$(GRIT_RELAY_URL)". Treat that as
@@ -140,6 +163,7 @@ export function readConfig(): AppConfig {
     launchArguments: args,
     proofPeer: argAfter(args, '--grit-proof-peer'),
     proofNonce: argAfter(args, '--grit-proof-nonce'),
+    proofBearer,
     openScreen: parseOpenScreen(argAfter(args, '--grit-screen')),
     chatPeer: argAfter(args, '--grit-chat-peer'),
     channelPath: argAfter(args, '--grit-channel-path'),

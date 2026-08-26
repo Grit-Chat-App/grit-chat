@@ -78,11 +78,13 @@
 	<!-- Voice notes: the composer records a short message and sends it as media. -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Grit Chat uses the microphone to record voice notes you choose to send.</string>
-	<!-- Required from iOS 14 on before the app may touch anything on the local network. Without it a
-	     connection to a LAN address fails with no useful error, which reads as a broken relay rather
-	     than a missing permission. -->
+	<!-- Local Hop bearers use mDNS/TCP on the nearby network. This describes the radio path itself,
+	     not a development relay, so a production build never misstates the recipient. -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Grit Chat connects to a Hop relay running on your local network during development.</string>
+	<string>Grit Chat uses your local network to discover nearby Hop devices and exchange messages directly.</string>
+	<!-- CoreBluetooth needs this before the native BLE bearer can scan, advertise and connect. -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Grit Chat uses Bluetooth to discover nearby Hop devices and exchange messages directly.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<!-- Every font file bundled into the app. iOS registers only what is listed here, and React

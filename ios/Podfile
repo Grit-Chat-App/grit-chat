@@ -27,26 +27,30 @@ target 'GritChat' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  # The Hop Apple client SDK, three pods matching the SDK's three SwiftPM targets.
+  # The Hop Apple SDK and the two native local bearers it needs for physical BLE and LAN.
   #
   # DEV PIN on this branch: hop main 54a2e82 (ABI 6, the hps:// channel surface), because no
   # published hop-sdk-apple release carries channels yet. CHop is a :podspec pod sourcing the
   # locally built xcframework zip in vendor/ (file://, sha256-verified); HopContract and HopSDK
-  # are :path pods whose Swift sources are vendored beside their specs. The full story, the
-  # rebuild steps, and the revert plan: ios/hop-pods/README.md.
+  # are :path pods whose Swift sources are vendored beside their specs. HopBearers has the matching
+  # BLE and LAN Swift sources and podspecs. The full story, the rebuild steps, and the revert plan:
+  # ios/hop-pods/README.md.
   #
   # What each one carries:
-  #   CHop        the compiled core, libhop.xcframework, from the local dev zip
-  #   HopContract the pure Swift bearer contract, no native code
-  #   HopSDK      HopNode and HopRuntime, the SDK proper, exposing the module `Hop`
+  #   CHop          the compiled core, libhop.xcframework, from the local dev zip
+  #   HopContract   the pure Swift bearer contract, no native code
+  #   HopSDK        HopNode and HopRuntime, the SDK proper, exposing the module `Hop`
+  #   HopBearerBle  CoreBluetooth discovery and links
+  #   HopBearerLan  mDNS discovery and TCP links
   #
-  # @hop-mesh/react-native is vendored as a tarball (also from hop main 54a2e82) and autolinked;
-  # its HopMesh.podspec declares a dependency on HopSDK, which is why these three have to be
-  # resolvable at all. CocoaPods cannot resolve a Swift Package Manager dependency, which is the
-  # whole reason the pods exist.
-  pod 'CHop',        :podspec => 'hop-pods/CHop/CHop.podspec'
-  pod 'HopContract', :path => 'hop-pods/HopContract'
-  pod 'HopSDK',      :path => 'hop-pods/HopSDK'
+  # @hop-mesh/react-native is vendored as a tarball (also from hop main 54a2e82) and autolinked.
+  # Its podspec declares HopSDK, HopBearerBle and HopBearerLan, which all must resolve locally:
+  # CocoaPods cannot resolve their Swift Package Manager dependency graph.
+  pod 'CHop',          :podspec => 'hop-pods/CHop/CHop.podspec'
+  pod 'HopContract',   :path => 'hop-pods/HopContract'
+  pod 'HopSDK',        :path => 'hop-pods/HopSDK'
+  pod 'HopBearerBle',  :path => 'hop-pods/HopBearers'
+  pod 'HopBearerLan',  :path => 'hop-pods/HopBearers'
 
   post_install do |installer|
     react_native_post_install(
