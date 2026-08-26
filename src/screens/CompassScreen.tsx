@@ -137,9 +137,10 @@ export function CompassScreen({navigation, route}: Props): React.JSX.Element {
   if (reading?.relativeTurnDegrees != null) {
     const delta = relativeTurnDegrees(reading.relativeTurnDegrees, normalizeDegrees(displayedTurn.current));
     displayedTurn.current += delta;
-    // No allocation of a new Animated.Value per sensor update. A short timing eases noise without
-    // hiding a real direction change; circular smoothing happened before this at the sensor seam.
-    Animated.timing(needle, {toValue: displayedTurn.current, duration: 110, useNativeDriver: true}).start();
+    // Font Awesome's location-arrow artwork points 45 degrees clockwise at its unrotated baseline.
+    // The compass contract is 0 degrees at screen north, so compensate once at render rather than
+    // corrupting relative-angle math or every sensor sample.
+    Animated.timing(needle, {toValue: displayedTurn.current - 45, duration: 110, useNativeDriver: true}).start();
   }
 
   const rotation = needle.interpolate({
