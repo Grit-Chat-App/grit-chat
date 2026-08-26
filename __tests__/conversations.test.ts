@@ -24,49 +24,80 @@ describe('using the store before load', () => {
 });
 
 describe('contacts', () => {
-  it('labels a new contact with a short address when no name is given', async () => {
+  it('creates an address-only contact when no local name is given', async () => {
     const {store} = await loadedStore();
     const {added, contact} = await store.addContact(ADDR_A);
     expect(added).toBe(true);
-    expect(contact.label).toBe(shortAddress(ADDR_A));
+    expect(contact.localAlias).toBeUndefined();
+    expect(store.displayNameFor(ADDR_A)).toBe(shortAddress(ADDR_A));
   });
 
-  it('reports a duplicate add rather than creating a second conversation', async () => {
+  it('updates a local alias without creating a second conversation', async () => {
     const {store} = await loadedStore();
     await store.addContact(ADDR_A, 'Ada');
-    const second = await store.addContact(ADDR_A, 'Ada Renamed');
+    const second = await store.addContact(ADDR_A, 'Ada Lovelace');
     expect(second.added).toBe(false);
     expect(store.conversations()).toHaveLength(1);
-    expect(second.contact.label).toBe('Ada Renamed');
+    expect(store.displayNameFor(ADDR_A)).toBe('Ada Lovelace');
   });
 
-  // labelFor is what every screen calls to decide what to CALL someone. It is one function on
-  // purpose: three screens resolving names three ways is how a messenger ends up showing you a name
-  // in one place and a base58 string for the same person in another.
-  it('calls a named person by their name', async () => {
-    const {store} = await loadedStore();
-    await store.addContact(ADDR_A, 'Ada');
-    expect(store.labelFor(ADDR_A)).toBe('Ada');
-  });
-
-  it('falls back to the short address for someone with no name, never to an empty string', async () => {
+  it('uses an accepted shared name only when the recipient has no local alias', async () => {
     const {store} = await loadedStore();
     await store.addContact(ADDR_A);
-    expect(store.labelFor(ADDR_A)).toBe(shortAddress(ADDR_A));
+    await store.stageProfile(ADDR_A, {
+      name: 'Lyra',
+      contact: 'lyra@example.test',
+      revision: 1,
+      receivedAt: 10,
+      messageId: 'profile-1',
+    });
+    await store.acceptPendingProfile(ADDR_A);
+    expect(store.displayNameFor(ADDR_A)).toBe('Lyra');
+
+    await store.setLocalAlias(ADDR_A, 'Camp radio');
+    expect(store.displayNameFor(ADDR_A)).toBe('Camp radio');
+    expect(store.contactByAddress(ADDR_A)?.sharedProfile?.name).toBe('Lyra');
   });
 
-  it('names a stranger by their short address rather than returning nothing', async () => {
-    // A channel writer, or an invite host, is routinely someone who is not a contact at all. The
-    // caller must never have to guard against a blank.
+  it('keeps a local alias when a newer sender profile is accepted', async () => {
     const {store} = await loadedStore();
-    expect(store.labelFor(ADDR_B)).toBe(shortAddress(ADDR_B));
+    await store.addContact(ADDR_A, 'Local name');
+    await store.stageProfile(ADDR_A, {
+      name: 'Sender name',
+      revision: 3,
+      receivedAt: 20,
+      messageId: 'profile-3',
+    });
+    await store.acceptPendingProfile(ADDR_A);
+    expect(store.displayNameFor(ADDR_A)).toBe('Local name');
+    expect(store.contactByAddress(ADDR_A)?.localAlias).toBe('Local name');
   });
 
-  it('follows a rename, so a name fixed in one place is fixed everywhere', async () => {
+  it('rejects a pending profile without changing an accepted profile or local alias', async () => {
     const {store} = await loadedStore();
-    await store.addContact(ADDR_A, 'Ada');
-    await store.addContact(ADDR_A, 'Ada Lovelace');
-    expect(store.labelFor(ADDR_A)).toBe('Ada Lovelace');
+    await store.addContact(ADDR_A, 'Local name');
+    await store.stageProfile(ADDR_A, {name: 'Ignored', revision: 1, receivedAt: 10, messageId: 'profile-1'});
+    await store.rejectPendingProfile(ADDR_A);
+    expect(store.contactByAddress(ADDR_A)?.pendingProfile).toBeUndefined();
+    expect(store.contactByAddress(ADDR_A)?.sharedProfile).toBeUndefined();
+    expect(store.displayNameFor(ADDR_A)).toBe('Local name');
+  });
+
+  it('migrates legacy labels to local aliases and persists the normalized record', async () => {
+    const kv = memoryKv({
+      'grit.contacts.v1': JSON.stringify([
+        {address: ADDR_A, label: 'Old local name', createdAt: 1},
+        {address: ADDR_B, label: shortAddress(ADDR_B), createdAt: 2},
+      ]),
+      'grit.messages.v1': '[]',
+    });
+    const store = new ConversationStore(kv);
+    await store.load();
+    expect(store.contactByAddress(ADDR_A)?.localAlias).toBe('Old local name');
+    expect(store.contactByAddress(ADDR_B)?.localAlias).toBeUndefined();
+    const saved = JSON.parse((await kv.getItem('grit.contacts.v1')) ?? '[]') as Array<Record<string, unknown>>;
+    expect(saved[0].label).toBeUndefined();
+    expect(saved[0].localAlias).toBe('Old local name');
   });
 });
 

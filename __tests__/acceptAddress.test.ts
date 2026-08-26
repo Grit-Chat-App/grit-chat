@@ -3,9 +3,20 @@
 // all refused with a reason the screen can show, and that a valid address becomes a contact.
 
 import {acceptScannedAddress} from '../src/contacts/acceptAddress';
+import {encodeContactCard} from '../src/contacts/contactCard';
+import {OwnProfile} from '../src/profile/types';
 
 const OWN = 'GrfdBYiMsvMvRFeZ4BVmRzXQ8sivHB4wYtQ9pKcTn3Ab';
 const PEER = 'DwDmNvpnaZa95JLeHXbVBd5RUgUJWJkE2WB4RZKbRBv2';
+
+const PUBLIC_PROFILE: OwnProfile = {
+  name: 'Mara Vale',
+  contact: 'mara@example.test',
+  nameScope: 'public',
+  contactScope: 'private',
+  photoScope: 'private',
+  revision: 2,
+};
 
 describe('acceptScannedAddress', () => {
   it('refuses an empty scan', async () => {
@@ -58,4 +69,15 @@ describe('acceptScannedAddress', () => {
     expect(outcome.address).toBe(PEER);
     expect(added).toEqual([PEER]);
   });
+  it('preserves a legacy raw address and stages only public QR fields for acceptance', async () => {
+    const card = encodeContactCard(PEER, PUBLIC_PROFILE);
+    const outcome = await acceptScannedAddress(async (address) => address === PEER, async () => {}, OWN, card);
+    expect(outcome).toMatchObject({
+      ok: true,
+      address: PEER,
+      profile: {name: 'Mara Vale', revision: 2},
+    });
+    expect(outcome.profile?.contact).toBeUndefined();
+  });
+
 });

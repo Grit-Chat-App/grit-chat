@@ -31,16 +31,19 @@ import {
 import {Branding} from '../branding';
 import {palette, radius, space, type} from '../design/tokens';
 import {buildLabel} from '../config';
-import {useGrit, useReadyGrit, useRelayState} from '../app/GritContext';
+import {useGrit, useProfileVersion, useReadyGrit, useRelayState} from '../app/GritContext';
+import {encodeContactCard} from '../contacts/contactCard';
 import {localNetworkHint} from '../hop/localNetwork';
 import type {RootStackParamList} from '../app/navigation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Identity'>;
 
 export function IdentityScreen({navigation}: Props): React.JSX.Element {
-  const {seam} = useReadyGrit();
+  const {seam, profiles} = useReadyGrit();
   const {config, lastProof} = useGrit();
   const relay = useRelayState();
+  useProfileVersion();
+  const contactCard = encodeContactCard(seam.address, profiles.current());
   const [draft, setDraft] = useState(seam.relayUrl() ?? '');
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,7 +77,7 @@ export function IdentityScreen({navigation}: Props): React.JSX.Element {
       <ScrollView contentContainerStyle={styles.body} testID="identity-scroll">
         <View style={styles.qrFrame} testID="identity-qr">
           <QRCode
-            value={seam.address}
+            value={contactCard}
             size={188}
             color={palette.abyss}
             backgroundColor={palette.alkali}
@@ -89,6 +92,12 @@ export function IdentityScreen({navigation}: Props): React.JSX.Element {
             setNote('Address copied.');
           }}
           testID="identity-copy"
+        />
+        <GhostButton
+          label="Edit your profile"
+          icon="user"
+          onPress={() => navigation.navigate('Profile')}
+          testID="identity-open-profile"
         />
 
         <View style={styles.divider} />

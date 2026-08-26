@@ -20,9 +20,12 @@ import {RelayState} from '../hop/relayBearer';
 import {ChannelStore} from '../store/channels';
 import {isMedia} from '../hop/media';
 import {persistInboundMedia} from '../hop/mediaFiles';
-import {ConversationStore, shortAddress} from '../store/conversations';
+import {ConversationStore} from '../store/conversations';
 import {asyncStorageKv} from '../store/asyncStorageKv';
 import {wireArrivals} from '../notifications/wire';
+import {persistProfilePhoto} from '../profile/files';
+import {parseProfile, ParsedProfile, PROFILE_CONTENT_TYPE} from '../profile/protocol';
+import {ProfileStore} from '../store/profile';
 
 export type GritStatus = 'starting' | 'ready' | 'failed';
 
@@ -33,6 +36,7 @@ export interface GritValue {
   seam?: GritSeam;
   store?: ConversationStore;
   channels?: ChannelStore;
+  profiles?: ProfileStore;
   /** One line describing the last proof run, when one was asked for at launch. */
   lastProof?: string;
 }
@@ -46,6 +50,8 @@ const EMPTY_CONFIG: AppConfig = {
   chatPeer: null,
   channelPath: null,
   channelProofPath: null,
+  proofProfileFixture: null,
+  proofBuild: false,
   resetStore: false,
   buildSha: null,
   buildTime: null,
@@ -60,15 +66,21 @@ let startup: Promise<{
   seam: GritSeam;
   store: ConversationStore;
   channels: ChannelStore;
+  profiles: ProfileStore;
   config: AppConfig;
 }> | null = null;
 let proofRan = false;
 let channelProofRan = false;
 
+// This address belongs only to the proof fixture. It never reaches a production build because
+// readConfig exposes proofProfileFixture only when Android BuildConfig.BUILD_TYPE is proof.
+const PROOF_PROFILE_FIXTURE_ADDRESS = 'DwDmNvpnaZa95JLeHXbVBd5RUgUJWJkE2WB4RZKbRBv2';
+
 async function boot(): Promise<{
   seam: GritSeam;
   store: ConversationStore;
   channels: ChannelStore;
+  profiles: ProfileStore;
   config: AppConfig;
 }> {
   const config = readConfig();
@@ -77,9 +89,23 @@ async function boot(): Promise<{
   await store.load();
   const channels = new ChannelStore(asyncStorageKv);
   await channels.load();
+  const profiles = new ProfileStore(asyncStorageKv);
+  await profiles.load();
   if (config.resetStore) {
     await store.reset();
     await channels.reset();
+  }
+
+  if (config.proofProfileFixture != null && config.proofBuild) {
+    const newer = config.proofProfileFixture === 'newer';
+    await store.addContact(PROOF_PROFILE_FIXTURE_ADDRESS);
+    await store.stageProfile(PROOF_PROFILE_FIXTURE_ADDRESS, {
+      name: newer ? 'Updated fixture' : 'Incoming fixture',
+      contact: newer ? 'newer-fixture' : 'initial-fixture',
+      revision: newer ? 2 : 1,
+      receivedAt: Date.now(),
+      messageId: newer ? 'proof-profile-v2' : 'proof-profile-v1',
+    });
   }
 
   const seam = await GritSeam.start({
@@ -90,22 +116,42 @@ async function boot(): Promise<{
     relayUrl: config.relayUrl,
   });
 
-  // Inbound messages land in the store, and an unknown sender becomes a contact rather than being
-  // dropped: someone who has your address can reach you, and hiding that would lose the message.
-  seam.onInbound((m) => {
-    void (async () => {
-      if (store.contactByAddress(m.from) == null) {
-        await store.addContact(m.from, shortAddress(m.from));
+  // A direct inbox item is acknowledged only after this handler has durably classified it. Profile
+  // cards are control payloads, never message bubbles or notification previews.
+  seam.onInbound(async (m) => {
+    if (m.contentType === PROFILE_CONTENT_TYPE) {
+      let parsed: ParsedProfile;
+      try {
+        parsed = parseProfile(m.body, m.bodyBytes?.length);
+      } catch (e) {
+        // The malformed card is deliberately accepted so the Hop inbox cannot redeliver it forever.
+        console.warn('rejected profile card', e);
+        return;
       }
-      // Media bytes live on disk; the row carries the URI. A failed write still keeps the row,
-      // with no URI, which the bubble renders as an honest "could not save" instead of a broken
-      // image icon.
-      const mediaUri =
-        isMedia(m.contentType) && m.bodyBytes != null
-          ? await persistInboundMedia(m.bodyBytes, m.id, m.contentType)
-          : undefined;
-      await store.appendInbound(m.from, m.body, m.hops, m.id, m.at, m.contentType, mediaUri ?? undefined);
-    })();
+      const photo =
+        parsed.photoBase64 == null
+          ? undefined
+          : await persistProfilePhoto(parsed.photoBase64, `received-${m.from}-${parsed.profile.revision}`);
+      await store.stageProfile(m.from, {
+        ...parsed.profile,
+        photo,
+        receivedAt: Date.now(),
+        messageId: m.id,
+      });
+      return;
+    }
+
+    if (store.contactByAddress(m.from) == null) {
+      await store.addContact(m.from);
+    }
+    // Media bytes live on disk; the row carries the URI. A failed write still keeps the row,
+    // with no URI, which the bubble renders as an honest "could not save" instead of a broken
+    // image icon.
+    const mediaUri =
+      isMedia(m.contentType) && m.bodyBytes != null
+        ? await persistInboundMedia(m.bodyBytes, m.id, m.contentType)
+        : undefined;
+    await store.appendInbound(m.from, m.body, m.hops, m.id, m.at, m.contentType, mediaUri ?? undefined);
   });
 
   // The node's own topic list is the truth for which channels exist (it persists topics; we do
@@ -140,7 +186,7 @@ async function boot(): Promise<{
   // UI and docs name background push as future work rather than implying it.
   wireArrivals(seam, store, channels);
 
-  return {seam, store, channels, config};
+  return {seam, store, channels, profiles, config};
 }
 
 export function GritProvider({children}: {children: React.ReactNode}): React.JSX.Element {
@@ -150,11 +196,11 @@ export function GritProvider({children}: {children: React.ReactNode}): React.JSX
     let live = true;
     startup = startup ?? boot();
     startup
-      .then(async ({seam, store, channels, config}) => {
+      .then(async ({seam, store, channels, profiles, config}) => {
         if (!live) {
           return;
         }
-        setValue({status: 'ready', seam, store, channels, config});
+        setValue({status: 'ready', seam, store, channels, profiles, config});
 
         // A proof run is asked for by launch argument, so a run can be driven from a command line
         // without tapping the screen. It sends through the ordinary product path, so the message
@@ -172,6 +218,7 @@ export function GritProvider({children}: {children: React.ReactNode}): React.JSX
               seam,
               store,
               channels,
+              profiles,
               config,
               lastProof: proofSummary(trace),
             });
@@ -191,6 +238,7 @@ export function GritProvider({children}: {children: React.ReactNode}): React.JSX
               seam,
               store,
               channels,
+              profiles,
               config,
               lastProof: channelProofSummary(trace),
             });
@@ -215,12 +263,23 @@ export function useGrit(): GritValue {
 }
 
 /** The seam and stores, for screens that only render once startup succeeded. */
-export function useReadyGrit(): {seam: GritSeam; store: ConversationStore; channels: ChannelStore} {
+export function useReadyGrit(): {
+  seam: GritSeam;
+  store: ConversationStore;
+  channels: ChannelStore;
+  profiles: ProfileStore;
+} {
   const value = useContext(GritContext);
-  if (value.status !== 'ready' || value.seam == null || value.store == null || value.channels == null) {
+  if (
+    value.status !== 'ready' ||
+    value.seam == null ||
+    value.store == null ||
+    value.channels == null ||
+    value.profiles == null
+  ) {
     throw new Error('useReadyGrit used outside a ready GritProvider');
   }
-  return {seam: value.seam, store: value.store, channels: value.channels};
+  return {seam: value.seam, store: value.store, channels: value.channels, profiles: value.profiles};
 }
 
 /** Live relay state, re-rendered as the bearer reports transitions. */
@@ -256,6 +315,22 @@ export function useStoreVersion(): number {
       setVersion(store.version);
     });
   }, [store]);
+  return version;
+}
+
+/** Re-render own-profile screens after a durable profile update. */
+export function useProfileVersion(): number {
+  const {profiles} = useGrit();
+  const [version, setVersion] = useState(profiles?.version ?? 0);
+  useEffect(() => {
+    if (profiles == null) {
+      return;
+    }
+    setVersion(profiles.version);
+    return profiles.subscribe(() => {
+      setVersion(profiles.version);
+    });
+  }, [profiles]);
   return version;
 }
 

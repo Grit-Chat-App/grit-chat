@@ -81,7 +81,7 @@ export interface SeamInbound {
   body: string;
   /** The MIME-ish type the sender declared. Text is 'text/plain' when unset. */
   contentType: string;
-  /** Raw bytes, present ONLY for media: decoding them as UTF-8 would corrupt them. */
+  /** Original inbound bytes, retained without a copy so bounded control payloads can validate them. */
   bodyBytes?: Uint8Array;
   hops: number;
   at: number;
@@ -168,7 +168,7 @@ export class GritSeam {
   private relayStateValue: RelayState = 'unconfigured';
   private relayDetailValue?: string;
   private readonly relayListeners = new Set<(state: RelayState, detail?: string) => void>();
-  private readonly inboundListeners = new Set<(m: SeamInbound) => void>();
+  private readonly inboundListeners = new Set<(m: SeamInbound) => void | Promise<void>>();
   private readonly channelMessageListeners = new Set<
     (m: SeamChannelMessage) => boolean | Promise<boolean>
   >();
@@ -259,18 +259,19 @@ export class GritSeam {
           from: m.from,
           body: media ? '' : utf8Decode(m.body),
           contentType,
-          bodyBytes: media ? m.body : undefined,
+          bodyBytes: m.body,
           hops: m.hops,
           at: m.createdAt,
         };
         // Service routes (seam-internal, e.g. the path check echo) take the message instead of
-        // the app listeners. Either way the inbox item must be accepted or it repeats forever.
+        // the app listeners. Any app listener must finish durable ingestion before acknowledgement:
+        // accepting first removes the core inbox record and lets a crash lose the message forever.
         const route = seam.serviceRoutes.get(inbound.from);
         if (route != null) {
           route(inbound);
         } else {
           for (const listener of seam.inboundListeners) {
-            listener(inbound);
+            await listener(inbound);
           }
         }
         await node?.acceptInbox(m.id);
@@ -738,7 +739,7 @@ export class GritSeam {
 
   // ---- inbound routing ----
 
-  onInbound(cb: (m: SeamInbound) => void): () => void {
+  onInbound(cb: (m: SeamInbound) => void | Promise<void>): () => void {
     this.inboundListeners.add(cb);
     return () => {
       this.inboundListeners.delete(cb);

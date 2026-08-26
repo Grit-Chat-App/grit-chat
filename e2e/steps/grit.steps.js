@@ -167,6 +167,47 @@ Then('the form tells me the address is not valid', async () => {
   }
 });
 
+When('I open my profile', async () => {
+  await tap('empty-show-identity');
+  await waitFor(element(by.id('screen-identity'))).toBeVisible().withTimeout(TIMEOUT);
+  await tap('identity-open-profile');
+  await waitFor(element(by.id('screen-profile'))).toBeVisible().withTimeout(TIMEOUT);
+});
+
+When('I save my profile as {string}', async (name) => {
+  await type('profile-name', name);
+  await element(by.id('profile-name')).tapReturnKey();
+  await tap('profile-save');
+});
+
+Then('my profile says public sharing is named and deliberate', async () => {
+  const reach = await textOf('profile-reach');
+  if (!/saved contact|no profile directory/i.test(reach)) {
+    throw new Error(`profile reach statement is incomplete: ${JSON.stringify(reach)}`);
+  }
+  await detoxExpect(element(by.id('profile-name-scope'))).toBeVisible();
+  await detoxExpect(element(by.id('profile-contact-scope'))).toBeVisible();
+  await detoxExpect(element(by.id('profile-photo-scope'))).toBeVisible();
+});
+
+When('I open the contact details', async () => {
+  await tap('chat-contact-profile');
+  await waitFor(element(by.id('screen-contact-profile'))).toBeVisible().withTimeout(TIMEOUT);
+});
+
+When('I change the local name to {string}', async (name) => {
+  await type('contact-alias', name);
+  await element(by.id('contact-alias')).tapReturnKey();
+  await tap('contact-alias-save');
+});
+
+Then('the local name is {string}', async (name) => {
+  const shown = await textOf('contact-alias');
+  if (shown !== name) {
+    throw new Error(`expected local name ${JSON.stringify(name)}, got ${JSON.stringify(shown)}`);
+  }
+});
+
 // --------------------------------------------------------------------------------------------
 // relay + peer
 // --------------------------------------------------------------------------------------------
@@ -372,12 +413,12 @@ When('I clear the relay endpoint', async () => {
   await tap('header-back');
 });
 
-Then('the relay indicator says it is not set', async () => {
-  // An endpoint the user cleared stays cleared: "not set" is a state the app shows, never a
-  // default it invents behind their back.
+Then('the relay indicator says it is not configured', async () => {
+  // An endpoint the user cleared stays cleared. The app names the missing configuration rather
+  // than inventing a default relay behind the person's back.
   const label = await textOf('relay-pill');
-  if (!/not set/.test(label)) {
-    throw new Error(`relay pill does not say it is not set: ${JSON.stringify(label)}`);
+  if (!/not configured/.test(label)) {
+    throw new Error(`relay pill does not say it is not configured: ${JSON.stringify(label)}`);
   }
 });
 
