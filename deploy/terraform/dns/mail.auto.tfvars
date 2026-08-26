@@ -124,11 +124,10 @@ mail_spf_terms = "include:_spf.google.com"
 # Gmail Settings privilege.
 #
 # Turning on Gmail for the domain requires the domain to be verified in the
-# tenant, and verifying it requires a resolvable record at grit.chat. The
-# authoritative nameservers for grit.chat today are the seller's parking
-# nameservers, which are not editable from here, so that record cannot exist
-# until the zone is delegated. DKIM therefore lands AFTER delegation, and it
-# cannot be brought forward.
+# tenant, and verification needs a resolvable record at grit.chat. The current
+# authoritative zone is a third-party empty zone outside this stack, so that
+# record cannot exist until Jason delegates to the complete Cloud DNS zone.
+# DKIM therefore lands AFTER delegation, and it cannot be brought forward.
 mail_dkim_txt_keys      = {}
 mail_dkim_cname_targets = {}
 

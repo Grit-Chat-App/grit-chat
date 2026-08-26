@@ -12,10 +12,12 @@ check "delegation_readiness" {
   assert {
     condition = local.web_ready
     error_message = join(" ", [
-      "NOT READY TO DELEGATE: no web records.",
-      "The apex has no A, no AAAA and no ALIAS, so delegating now would take the",
-      "domain from a parking page to NXDOMAIN-shaped emptiness.",
-      "Set web_apex_a, web_apex_aaaa or web_apex_alias once the web host is chosen.",
+      "NOT READY TO DELEGATE: Firebase Hosting DNS updates are absent or incomplete.",
+      "Create the Hosting CustomDomain associations first, then let CI read their",
+      "generated desired RRsets from private state and materialize every one here.",
+      "The gate requires apex plus www address behavior. Do not copy a static A",
+      "record from documentation and call the Firebase ownership and certificate",
+      "records complete.",
     ])
   }
 

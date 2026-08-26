@@ -30,11 +30,41 @@ locals {
   # provider's signing domain is known, not a default to inherit.
   dmarc_record = "v=DMARC1; p=${var.dmarc_policy}; sp=${var.dmarc_subdomain_policy}; rua=${local.dmarc_rua}"
 
-  # Cloud DNS holds one record set per name and type, so every TXT string that
-  # belongs at the apex has to arrive in a single resource. SPF leads because a
-  # verifier reads the first matching record and putting it first costs nothing.
+  # Firebase returns record data without Cloud DNS's required outer TXT quotes.
+  # Normalize every generated RRset once. The apex TXT set is merged into the
+  # mail resource below; every other set is materialized by the generic Firebase
+  # resource, so a later apply cannot create a second authoritative RRset for the
+  # same name and type.
+  firebase_dns_record_sets = {
+    for key, record_set in var.firebase_dns_records : key => {
+      name = endswith(record_set.name, ".") ? record_set.name : "${record_set.name}."
+      type = record_set.type
+      rrdatas = [
+        for rdata in record_set.rrdatas :
+        record_set.type == "TXT" ? "\"${rdata}\"" : rdata
+      ]
+    }
+  }
+
+  # Cloud DNS holds one apex TXT RRset. Firebase ownership data therefore joins
+  # SPF and future Workspace verification data here rather than becoming a second
+  # google_dns_record_set that fights the mail resource.
+  firebase_apex_txt_values = try(
+    var.firebase_dns_records["${local.apex}|TXT"].rrdatas,
+    [],
+  )
+
+  # SPF leads because it is stable and every other apex TXT value joins its same
+  # record set. Firebase data is emitted by the Hosting control-plane state and
+  # is known only after CustomDomain discovery succeeds.
   apex_txt_rrdatas = [
-    join(" ", [for s in concat([local.spf_record], var.apex_txt_verification) : "\"${s}\""])
+    join(" ", [
+      for value in concat(
+        [local.spf_record],
+        var.apex_txt_verification,
+        local.firebase_apex_txt_values,
+      ) : "\"${value}\""
+    ])
   ]
 
   # A single DNS character string caps at 255 bytes, and a 2048 bit DKIM key
@@ -62,31 +92,41 @@ locals {
   # exists for the domain.
   mx_rrdatas = length(var.mail_mx) > 0 ? var.mail_mx : ["0 ."]
 
-  # Readiness, split in two because the two halves are two different people's
-  # decisions and reporting them together would hide which one is missing.
-  web_ready = length(var.web_apex_a) > 0 || length(var.web_apex_aaaa) > 0 || var.web_apex_alias != ""
+  # Firebase Hosting is the selected web host. A literal A record copied from a
+  # guide is not enough to authorize delegation: Firebase generates ownership,
+  # ACME and conditionally CAA records per CustomDomain. The Hosting root exposes
+  # all of them through private state, and this root writes all of them. Requiring
+  # both apex and www address behavior keeps a missing www association from
+  # reading as a complete web deployment.
+  firebase_apex_ready = anytrue([
+    for record_set in values(var.firebase_dns_records) :
+    trimsuffix(record_set.name, ".") == local.apex &&
+    contains(["A", "AAAA"], record_set.type)
+  ])
 
-  # Mail readiness is split, and the split is a correction rather than a
-  # refinement. This gate previously demanded MX, SPF AND DKIM before it would
-  # call the zone delegation-ready, which is a requirement the mechanism cannot
-  # satisfy in that order.
+  firebase_www_ready = anytrue([
+    for record_set in values(var.firebase_dns_records) :
+    trimsuffix(record_set.name, ".") == "www.${local.apex}" &&
+    contains(["A", "AAAA", "CNAME"], record_set.type)
+  ])
+
+  firebase_dns_ready = (
+    length(var.firebase_dns_records) > 0 &&
+    local.firebase_apex_ready &&
+    local.firebase_www_ready
+  )
+
+  web_ready = local.firebase_dns_ready
+  # Mail readiness is split. DKIM is issued by Workspace only after the domain
+  # is verified in that tenant. Domain verification needs a resolvable record,
+  # which cannot happen until GoDaddy delegates to Cloud DNS. Requiring DKIM
+  # before delegation would recreate the circular gate this module was built to
+  # prevent.
   #
-  # Google's own DKIM documentation is explicit: the key is generated in the
-  # Admin console, and "after you turn on Gmail for your organization, you must
-  # wait 24-72 hours before you can get your DKIM key in the Admin console."
-  # Turning on Gmail requires the domain to be verified in the tenant, and
-  # verifying it requires a resolvable record at the domain. For grit.chat the
-  # authoritative nameservers are the seller's parking nameservers, which are not
-  # editable here, so that record cannot exist until the zone is delegated.
-  #
-  # So the old gate was circular: DKIM before delegation, delegation before DKIM.
-  # It could never go green in the correct order.
-  #
-  # What actually has to precede delegation is INBOUND mail. MX decides where
-  # mail is delivered and SPF decides who may send as the domain, and both are
-  # fixed published values that can be written before anything is provisioned.
-  # DKIM only signs outbound mail, and its absence does not misroute or lose a
-  # message: with SPF passing, DMARC still passes on the SPF leg alone.
+  # What must precede delegation is INBOUND mail. MX decides where mail is
+  # delivered and SPF authorizes its sender. DKIM signs outbound mail later;
+  # with SPF aligned, DMARC still passes on its SPF leg while the Workspace key
+  # is pending.
   mail_inbound_ready = length(var.mail_mx) > 0 && var.mail_spf_terms != ""
 
   # Tracked separately and deliberately NOT part of delegation readiness, so an
