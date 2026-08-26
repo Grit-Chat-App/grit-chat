@@ -158,7 +158,7 @@ export interface RelayView {
 export function relayView(state: RelayStateName): RelayView {
   switch (state) {
     case 'up':
-      return {glyph: 'signal', label: 'relay carrying', tone: 'confirmed', underline: true};
+      return {glyph: 'signal', label: 'relay link open', tone: 'confirmed', underline: true};
     case 'connecting':
       return {glyph: 'circle-o', label: 'relay dialing', tone: 'moving', underline: false};
     case 'retrying':
@@ -179,7 +179,7 @@ export function relayView(state: RelayStateName): RelayView {
 export function relayPlain(state: RelayStateName): string {
   switch (state) {
     case 'up':
-      return 'Your relay link is open, so messages can leave this device. A delivered message is the only proof a relay accepted anything.';
+      return 'A relay link is open. It can carry packets, but only a delivered message proves that a Hop relay accepted them.';
     case 'connecting':
       return 'Dialing your relay. Until the link is open, messages cannot leave this device.';
     case 'retrying':
