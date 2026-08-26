@@ -32,7 +32,7 @@
          android:usesCleartextTraffic flag. The React Native template wires that flag to the
          ${usesCleartextTraffic} manifest placeholder, which the React Native Gradle plugin sets to
          "true" for every debug variant (AgpConfiguratorUtils.kt): blanket cleartext to every host.
-         minSdkVersion is 24, and from 24 on a network security config overrides that flag outright,
+         minSdkVersion is 29, and from 24 on a network security config overrides that flag outright,
          so the flag was already inert; it is removed rather than left to describe a permission the
          app does not take. -->
     <application

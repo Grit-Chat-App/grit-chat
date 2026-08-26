@@ -11,7 +11,7 @@
 Pod::Spec.new do |s|
   s.name = "HopSDK"
   s.module_name = "Hop"
-  s.version = "0.0.2-dev.1"
+  s.version = "0.0.2"
   s.summary = "The Hop Apple client SDK (hps:// channels + relay pool): a mesh node over libhop ABI 6."
   s.homepage = "https://github.com/hopmesh/hop"
   s.license = {:type => "Apache-2.0", :file => "LICENSE.md"}
@@ -28,6 +28,6 @@ Pod::Spec.new do |s|
   # vendors, and a dynamic framework does not absorb a static dependency.
   s.static_framework = true
 
-  s.dependency "CHop", "0.0.2-dev.1"
-  s.dependency "HopContract", "0.0.2-dev.1"
+  s.dependency "CHop", "0.0.2"
+  s.dependency "HopContract", "0.0.2"
 end

@@ -36,10 +36,15 @@ operator evidence record.
 
 ## Limits
 
-The React Native SDK carries this result over a relay. It currently has no Bluetooth or LAN bearer,
-so radio discovery and direct local transport remain unproven. The production relay fleet remains
-unproven. The Pixel receipt screen was read from physical hardware; no physical iPhone screenshot
-was captured.
+The physical result above crossed a RelayBearer. Current proof builds also package native Bluetooth
+and LAN bearers. A relay-disabled BLE attempt on the physical Pixel 7 selected the physical Test
+iPhone XR and sent `GCPHYS-BLE-08785E1A-DD4C-405E-A5C4-58AEF765088A`; its rendered result was
+`delivered=false`, `relayed=0`, `forwardHops=0` after 31,144 ms. The iPhone logged `links=0` and
+no receipt. This is a negative result, not delivery. The iPhone's LAN manager returns `NoAuth` and
+its Bluetooth authorization remains not determined until the person holding it acts. No physical
+BLE-only or LAN-only nonce receipt is recorded here yet, and radio discovery remains unproven. The
+production relay fleet remains unproven. The Pixel receipt screen was read from physical hardware;
+no physical iPhone screenshot was captured.
 
 Channels run on locally built ABI 6 artifacts because no published `hop-sdk-apple` release carries
 them, so channels cannot ship until one does. Direct messages are unaffected: they work on the

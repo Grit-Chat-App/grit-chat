@@ -1,22 +1,17 @@
-// The proof run: one real message from THIS app's node to a second, independent Hop node, through a
-// running relay, with the delivery status the protocol reports.
-//
-// WHY THIS REPLACED A LOOPBACK CHECK. An in-process loopback pair proves the bridge and the core on
-// one device, and nothing whatsoever about two devices: both ends share a process, so the bytes never
-// touch a network. The bar for this app is a message that leaves the device, crosses a relay, and
-// comes back confirmed. So the proof run sends through the configured relay to an address given at
-// launch, and reports what the core says happened.
+// The proof run sends one real message from THIS app's node to a second independent node and
+// records the delivery state the protocol reports. It can run through a configured relay or through
+// one explicitly isolated native local bearer. The trace names which one ran so no "connected" state
+// is mistaken for a transport proof.
 //
 // It deliberately uses the ORDINARY product path: seam.send plus the conversation store, so the
-// message appears in the conversation with its hop trace exactly as a human's message would. The only
-// thing the proof adds is that it is triggered by a launch argument and writes its trace to a file, so
-// a run can be driven and read from a command line without tapping the screen.
+// message appears in its conversation with the hop trace exactly as a human's message would. The
+// only addition is launch-argument trigger and a trace file that a host can read without screen taps.
 
 import RNFS from 'react-native-fs';
 
 import {AppConfig} from '../config';
 import {ConversationStore, shortAddress} from '../store/conversations';
-import {GritSeam} from './seam';
+import {GritSeam, LocalBearerSnapshot} from './seam';
 
 export interface ProofTrace {
   ok: boolean;
@@ -27,6 +22,10 @@ export interface ProofTrace {
   bundleId: string;
   relayUrl: string | null;
   relayState: string;
+  /** The path selected at startup. A local value means relay was withheld before the node opened. */
+  bearer: 'relay' | 'ble' | 'lan';
+  /** The native state captured immediately before a local proof send. */
+  bearerSnapshot?: LocalBearerSnapshot;
   relayDetail?: string;
   /** Every delivery snapshot the core reported, in order. */
   statusHistory: {relayed: number; delivered: boolean; forwardHops: number; forwardMs: number}[];
@@ -46,14 +45,32 @@ export interface ProofTrace {
 /** Where the trace lands so a host can read it without the screen. */
 export const PROOF_TRACE_FILENAME = 'grit-proof.json';
 
-const PROVES =
-  'A real message left this device, crossed a running hop-relayd as sealed bytes the relay cannot ' +
-  'read, reached a second independent Hop node, and the destination confirmed delivery back to this ' +
-  'sender with a forward hop count from the protocol.';
-const DOES_NOT_PROVE =
-  'Radio discovery. This build has no Bluetooth or local-network bearer, so the peer was reached by ' +
-  'knowing its address and every packet went through the relay. It also proves nothing about a ' +
-  'second handset: the other node here is a command line process.';
+interface ProofClaims {
+  proves: string;
+  doesNotProve: string;
+}
+
+function proofClaims(bearer: 'relay' | 'ble' | 'lan'): ProofClaims {
+  if (bearer === 'relay') {
+    return {
+      proves:
+        'A real message left this device, crossed a running hop-relayd as sealed bytes, reached a ' +
+        'second independent Hop node, and the destination confirmed delivery back to this sender ' +
+        'with a forward hop count from the protocol.',
+      doesNotProve:
+        'Radio discovery or a second handset. The peer may be a command-line node reached by relay.',
+    };
+  }
+  return {
+    proves:
+      `The native ${bearer.toUpperCase()} bearer was active while the other local bearer and relay ` +
+      'were disabled, then a real message left this device and the destination confirmed delivery ' +
+      'back to the sender with a forward hop count from the protocol.',
+    doesNotProve:
+      'A different local bearer, relay delivery, discovery beyond this linked peer, channels, or ' +
+      'background delivery.',
+  };
+}
 
 export async function runProof(
   seam: GritSeam,
@@ -66,8 +83,11 @@ export async function runProof(
   }
   const nonce = config.proofNonce ?? `no-nonce-${Date.now()}`;
   const startedAt = Date.now();
+  const bearer: ProofTrace['bearer'] = config.proofBearer ?? 'relay';
+  const claims = proofClaims(bearer);
   const relay = seam.relayState();
   const body = `grit proof ${nonce}`;
+  let bearerSnapshot: LocalBearerSnapshot | undefined;
 
   const base = {
     selfAddress: seam.address,
@@ -77,13 +97,21 @@ export async function runProof(
     relayUrl: seam.relayUrl(),
     relayState: relay.state,
     relayDetail: relay.detail,
+    bearer,
     isPersistent: seam.isPersistent,
     prekeyPublished: seam.prekeyPublished,
-    proves: PROVES,
-    doesNotProve: DOES_NOT_PROVE,
+    proves: claims.proves,
+    doesNotProve: claims.doesNotProve,
   };
 
   try {
+    if (config.proofBearer != null) {
+      if (seam.relayUrl() != null || seam.relayState().state !== 'unconfigured') {
+        throw new Error('A local bearer proof requires relay to be withheld before node startup.');
+      }
+      bearerSnapshot = await seam.waitForIsolatedBearer(config.proofBearer);
+    }
+
     // The peer becomes a real contact, so the message lands in a real conversation rather than in a
     // side channel that only the proof can see.
     await store.addContact(peer, shortAddress(peer));
@@ -99,6 +127,8 @@ export async function runProof(
       ...base,
       relayState: after.state,
       relayDetail: after.detail,
+      prekeyPublished: seam.prekeyPublished,
+      bearerSnapshot,
       ok: outcome.delivered,
       bundleId: outcome.id,
       statusHistory: outcome.history,
@@ -114,6 +144,7 @@ export async function runProof(
   } catch (e) {
     const trace: ProofTrace = {
       ...base,
+      bearerSnapshot,
       ok: false,
       bundleId: '',
       statusHistory: [],
@@ -151,6 +182,7 @@ export function proofSummary(t: ProofTrace): string {
   const verdict = t.ok && t.forwardHops > 1 ? 'PASS' : 'FAIL';
   return (
     `${verdict}: delivered=${t.delivered} relayed=${t.relayed} forwardHops=${t.forwardHops} ` +
-    `via ${t.relayUrl ?? 'no relay'} in ${t.elapsedMs} ms`
+    `via ${t.bearer}${t.bearer === 'relay' ? ` ${t.relayUrl ?? 'no relay'}` : ', relay=disabled'} ` +
+    `in ${t.elapsedMs} ms`
   );
 }

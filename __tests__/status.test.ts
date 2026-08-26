@@ -133,9 +133,9 @@ describe('relay states', () => {
 });
 
 describe('peer reachability vocabulary', () => {
-  it('offers no direct-radio state, because this build has no radio bearer', () => {
-    // If a radio bearer ever lands, this test should fail and be updated deliberately rather than
-    // the UI quietly gaining a "nearby" claim it cannot support.
+  it('does not label a direct link nearby until consumer status can identify it', () => {
+    // Native local bearers exist, but the consumer status has no direct state yet. The absence of
+    // that state must not become a vague nearby claim.
     expect(reachView('relay').label).toBe('reachable through the relay');
     expect(reachView('norelay').label).toBe('no path right now');
   });
@@ -150,13 +150,11 @@ describe('the plain relay sentence a person reads', () => {
     }
   });
 
-  it('never claims device to device delivery, because there is no radio bearer', () => {
-    // The hard product constraint, as a test rather than a promise: this build reaches other people
-    // through a relay and nothing else. If a radio bearer lands, this fails and gets rewritten on
-    // purpose instead of the copy quietly drifting into a claim the transport cannot support.
-    for (const state of states) {
-      const sentence = relayPlain(state);
-      expect(sentence).not.toMatch(/mesh|device to device|nearby|peer to peer|bluetooth|offline delivery/i);
+  it('does not treat a local bearer as delivered relay traffic', () => {
+    // A local bearer is a possible path while a relay is unavailable. It is not evidence that an
+    // unavailable relay carried or accepted anything.
+    for (const state of ['connecting', 'retrying', 'down', 'unconfigured'] as const) {
+      expect(relayPlain(state)).not.toMatch(/relay delivered|relay accepted/i);
     }
   });
 
@@ -168,11 +166,11 @@ describe('the plain relay sentence a person reads', () => {
     }
   });
 
-  it('names the relay as the thing that carries, in every state that is not carrying', () => {
+  it('names local bearers as the only alternate path when the relay cannot carry', () => {
     for (const state of ['connecting', 'retrying', 'down', 'unconfigured'] as const) {
-      expect(relayPlain(state)).toMatch(/relay/i);
-      // Each non-carrying state has to say where messages actually are: on this device.
-      expect(relayPlain(state)).toMatch(/this device/i);
+      const sentence = relayPlain(state);
+      expect(sentence).toMatch(/relay/i);
+      expect(sentence).toMatch(/Bluetooth or local-network/i);
     }
   });
 });

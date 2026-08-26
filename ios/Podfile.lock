@@ -1,7 +1,7 @@
 PODS:
   - boost (1.84.0):
     - ReactNativeDependencies
-  - CHop (0.0.2-dev.1)
+  - CHop (0.0.2)
   - DoubleConversion (1.1.6):
     - ReactNativeDependencies
   - fast_float (8.0.0):
@@ -15,9 +15,15 @@ PODS:
   - hermes-engine (250829098.0.16):
     - hermes-engine/Pre-built (= 250829098.0.16)
   - hermes-engine/Pre-built (250829098.0.16)
-  - HopContract (0.0.2-dev.1)
+  - HopBearerBle (0.0.2):
+    - HopContract (< 0.1.0, >= 0.0.2)
+  - HopBearerLan (0.0.2):
+    - HopContract (< 0.1.0, >= 0.0.2)
+  - HopContract (0.0.2)
   - HopMesh (0.0.2):
     - hermes-engine
+    - HopBearerBle
+    - HopBearerLan
     - HopSDK
     - RCTRequired
     - RCTTypeSafety
@@ -39,9 +45,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - HopSDK (0.0.2-dev.1):
-    - CHop (= 0.0.2-dev.1)
-    - HopContract (= 0.0.2-dev.1)
+  - HopSDK (0.0.2):
+    - CHop (= 0.0.2)
+    - HopContract (= 0.0.2)
   - NitroCompass (1.2.5):
     - hermes-engine
     - NitroModules
@@ -2012,6 +2018,8 @@ DEPENDENCIES:
   - fmt (from `build/rndeps-facades/fmt`)
   - glog (from `build/rndeps-facades/glog`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - HopBearerBle (from `hop-pods/HopBearers`)
+  - HopBearerLan (from `hop-pods/HopBearers`)
   - HopContract (from `hop-pods/HopContract`)
   - "HopMesh (from `../node_modules/@hop-mesh/react-native`)"
   - HopSDK (from `hop-pods/HopSDK`)
@@ -2127,6 +2135,10 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.16
+  HopBearerBle:
+    :path: hop-pods/HopBearers
+  HopBearerLan:
+    :path: hop-pods/HopBearers
   HopContract:
     :path: hop-pods/HopContract
   HopMesh:
@@ -2320,16 +2332,18 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   boost: 8502bfdc46e2804408af2e163049ece181009af4
-  CHop: 3809de59a02c0672d6aa5ca6618ea0f4134db1b6
+  CHop: 8c34ce8a3786eea5417e8df3c3b9df54b3f40d16
   DoubleConversion: 501a575c40c0b50c89685762dd3e415e6bb26fb0
   fast_float: 7c925d1cebf8328d4018d061f49377e9f887e3b4
   FBLazyVector: 732df79fea96f10cc14477969cea05707026d2fd
   fmt: ba0886e864ebb21d14c98b2e12e164b8002f5b93
   glog: 3cf7cb46f743c4bc758ae3e6d9c15bd1b4cfd6d4
   hermes-engine: 6a26e94b4a974cbadc751eed9caa12624c38f226
-  HopContract: 2baabbfa61026810185d3d8c0e4ea3f289be133b
-  HopMesh: d692a3673c42ffe2a3ce88d4bfc48d7c640bb3f6
-  HopSDK: 31d8a5ca7553bd6fdccb8c5622ec4c677999e9a5
+  HopBearerBle: cd9c812ea1079b8534680f370894f2e5f1796b3d
+  HopBearerLan: bbd5b108758f7ad75a7037df0430e3c0dadfed02
+  HopContract: f3330f1278308f6ac6adeb06aae66cf495d59d5e
+  HopMesh: 983c7d06b8a5074c985b7c8f860431256e8bf1d6
+  HopSDK: f85ea6c8b9a65defe87d211a1f8a4da6dededd2e
   NitroCompass: 1063193b5972e5deb2da1a8483514359437494d5
   NitroModules: b878677ec4c260bd821ed4a66703979538705f2e
   RCT-Folly: 82921e585c0400eda46fac1068297aa9dfb035e4
@@ -2423,6 +2437,6 @@ SPEC CHECKSUMS:
   SocketRocket: 37aec555668fb852ec12e3c0de59a86ca58f0871
   Yoga: d1c536142c5ff8ec8cd856ab2a7c227a1d875c8e
 
-PODFILE CHECKSUM: a119a9c543baace928f9494b7b7a12cb240d1d59
+PODFILE CHECKSUM: 5b40a043ec5021008643438d808593421be96d0c
 
 COCOAPODS: 1.17.0

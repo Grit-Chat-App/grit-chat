@@ -8,6 +8,7 @@
 // stops being able to reach this device on the next launch.
 
 import React, {createContext, useContext, useEffect, useState} from 'react';
+import {PermissionsAndroid, Platform} from 'react-native';
 import RNFS from 'react-native-fs';
 
 import {AppConfig, readConfig} from '../config';
@@ -46,6 +47,7 @@ const EMPTY_CONFIG: AppConfig = {
   launchArguments: [],
   proofPeer: null,
   proofNonce: null,
+  proofBearer: null,
   openScreen: null,
   chatPeer: null,
   channelPath: null,
@@ -72,6 +74,26 @@ let startup: Promise<{
 let proofRan = false;
 let channelProofRan = false;
 
+async function ensureNativeBearerPermissions(): Promise<void> {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  const permissions =
+    Platform.Version >= 31
+      ? [
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE,
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+        ]
+      : [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION];
+  const states = await PermissionsAndroid.requestMultiple(permissions);
+  const denied = permissions.filter((permission) => states[permission] !== PermissionsAndroid.RESULTS.GRANTED);
+  if (denied.length > 0) {
+    throw new Error(`Nearby-device permission was not granted: ${denied.join(', ')}.`);
+  }
+}
+
 // This address belongs only to the proof fixture. It never reaches a production build because
 // readConfig exposes proofProfileFixture only when Android BuildConfig.BUILD_TYPE is proof.
 const PROOF_PROFILE_FIXTURE_ADDRESS = 'DwDmNvpnaZa95JLeHXbVBd5RUgUJWJkE2WB4RZKbRBv2';
@@ -84,6 +106,8 @@ async function boot(): Promise<{
   config: AppConfig;
 }> {
   const config = readConfig();
+  await ensureNativeBearerPermissions();
+
 
   const store = new ConversationStore(asyncStorageKv);
   await store.load();
@@ -113,8 +137,12 @@ async function boot(): Promise<{
     identity: new IdentityStore(platformKeychain),
     kv: asyncStorageKv,
     documentsPath: RNFS.DocumentDirectoryPath,
-    relayUrl: config.relayUrl,
+    relayUrl: config.proofBearer == null ? config.relayUrl : null,
   });
+  if (config.proofBearer != null) {
+    await seam.isolateLocalBearer(config.proofBearer);
+  }
+
 
   // A direct inbox item is acknowledged only after this handler has durably classified it. Profile
   // cards are control payloads, never message bubbles or notification previews.
@@ -210,7 +238,11 @@ export function GritProvider({children}: {children: React.ReactNode}): React.JSX
           // The send is useless until the relay link is carrying and the prekey has been
           // published over it. Wait for that, rather than firing into a link that is still
           // shaking hands and reporting relayed=0 forever.
-          await waitForRelayReady(seam);
+          if (config.proofBearer == null) {
+            await waitForRelayReady(seam);
+          } else {
+            await seam.waitForIsolatedBearer(config.proofBearer);
+          }
           const trace: ProofTrace | null = await runProof(seam, store, config);
           if (live && trace != null) {
             setValue({

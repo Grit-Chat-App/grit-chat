@@ -98,6 +98,23 @@ export interface SendOutcome {
   history: HopStatus[];
 }
 
+/** The two physical radios the native bridge owns. Relay is deliberately outside this manager. */
+export type LocalBearer = 'ble' | 'lan';
+
+/**
+ * The native bridge's complete bearer state. It is recorded with a proof so "radio enabled" cannot
+ * be mistaken for an isolated transport.
+ */
+export interface LocalBearerSnapshot {
+  readonly revision: number;
+  readonly states: Readonly<{
+    ble: 'disabled' | 'enabled' | 'active';
+    lan: 'disabled' | 'enabled' | 'active';
+    relay: 'disabled';
+  }>;
+}
+
+
 export class SendError extends Error {
   constructor(message: string) {
     super(message);
@@ -180,6 +197,9 @@ export class GritSeam {
   /** The configured endpoint, or null when nothing is configured. Null is never a default. */
   private relayUrlValue: string | null;
   private prekeyPublishedValue = false;
+  /** Proof-only publication retry. A local peer may arrive after this node has started. */
+  private localPrekeyTimer: number | null = null;
+
 
   private constructor(
     /** The running node. Exposed for seam-internal use (the proof run) ONLY. */
@@ -509,6 +529,64 @@ export class GritSeam {
     }
   }
 
+  /**
+   * Isolate one native local bearer before a physical proof. Relay must have been withheld at
+   * startup, rather than merely declared "off" after a socket had a chance to carry a packet.
+   */
+  async isolateLocalBearer(bearer: LocalBearer): Promise<LocalBearerSnapshot> {
+    if (this.relay != null || this.relayUrlValue != null) {
+      throw new Error('Cannot isolate a local bearer while a relay is configured.');
+    }
+
+    const other: LocalBearer = bearer === 'ble' ? 'lan' : 'ble';
+    await this.node.setBearerEnabled(other, false);
+    const snapshot = (await this.node.setBearerEnabled(bearer, true)) as LocalBearerSnapshot;
+    if (
+      snapshot.states[bearer] === 'disabled' ||
+      snapshot.states[other] !== 'disabled' ||
+      snapshot.states.relay !== 'disabled'
+    ) {
+      throw new Error(`Native bearer isolation failed for ${bearer}.`);
+    }
+
+    this.stopLocalPrekeyPublication();
+    const publish = () => {
+      void this.node
+        .publishPrekey()
+        .then((published) => {
+          this.prekeyPublishedValue ||= published;
+        })
+        .catch(() => {});
+    };
+    publish();
+    // The other handset can enter range after this app has started. Re-offering its prekey until
+    // close makes the next real link usable without having an invisible timing dependency.
+    this.localPrekeyTimer = setInterval(publish, 1_000);
+    return snapshot;
+  }
+
+  /** The send side waits for an actual selected radio link, never just an enabled manager. */
+  async waitForIsolatedBearer(bearer: LocalBearer, timeoutMs: number = 15_000): Promise<LocalBearerSnapshot> {
+    const other: LocalBearer = bearer === 'ble' ? 'lan' : 'ble';
+    const started = Date.now();
+    let snapshot = (await this.node.bearerSnapshot()) as LocalBearerSnapshot;
+    while (
+      snapshot.states[bearer] !== 'active' ||
+      snapshot.states[other] !== 'disabled' ||
+      snapshot.states.relay !== 'disabled'
+    ) {
+      if (Date.now() - started >= timeoutMs) {
+        throw new Error(
+          `No active isolated ${bearer} link after ${timeoutMs} ms: ` +
+            `ble=${snapshot.states.ble}, lan=${snapshot.states.lan}, relay=${snapshot.states.relay}.`,
+        );
+      }
+      await sleep(200);
+      snapshot = (await this.node.bearerSnapshot()) as LocalBearerSnapshot;
+    }
+    return snapshot;
+  }
+
   // ---- messaging ----
 
   async validateAddress(text: string): Promise<boolean> {
@@ -755,10 +833,18 @@ export class GritSeam {
     this.serviceRoutes.delete(address);
   }
 
+  private stopLocalPrekeyPublication(): void {
+    if (this.localPrekeyTimer != null) {
+      clearInterval(this.localPrekeyTimer);
+      this.localPrekeyTimer = null;
+    }
+  }
+
   async close(): Promise<void> {
     this.serviceRoutes.clear();
     this.inboundListeners.clear();
     this.relayListeners.clear();
+    this.stopLocalPrekeyPublication();
     if (this.relay != null) {
       await this.relay.close().catch(() => {});
       this.relay = null;

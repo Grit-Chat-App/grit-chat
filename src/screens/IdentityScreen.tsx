@@ -55,7 +55,7 @@ export function IdentityScreen({navigation}: Props): React.JSX.Element {
       await seam.setRelayUrl(draft);
       setNote(
         draft.trim().length === 0
-          ? 'Relay cleared. Messages cannot leave this device until you set one.'
+          ? 'Relay cleared. A message may still travel over a live Bluetooth or local-network link.'
           : `Dialing ${draft.trim()}`,
       );
     } catch (e) {

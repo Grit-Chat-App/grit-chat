@@ -14,8 +14,8 @@
 //
 // What it proves and what it does not: a message that arrives through this bearer really crossed a
 // real relay, sealed by the real Rust core on one device and opened by the real core on the other.
-// It does not prove radio discovery: the React Native SDK ships no BLE or LAN bearer at all, so
-// reaching a peer means knowing its address.
+// This route does not prove radio discovery. The current app also packages native BLE and LAN
+// bearers, and a relay trace says nothing about whether either direct path linked.
 
 import type {HopNode, Subscription} from '@hop-mesh/react-native';
 

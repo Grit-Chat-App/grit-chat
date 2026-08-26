@@ -704,9 +704,10 @@ you to run `burnchat-smoke` again; if a message needs proving, this ladder is th
 
 ## What the proven paths do not prove
 
-- **Radio discovery.** No Bluetooth, no LAN bearer. Every packet, simulator and handset alike,
-  went through the relay.
-
+- **Radio discovery or direct local delivery.** Current proof builds package native Bluetooth and
+  LAN bearers, but no physical BLE-only or LAN-only nonce receipt is recorded in this ladder yet.
+  The physical Test iPhone XR reports iOS Local Network `NoAuth` pending interactive approval.
+  Every claimed direct message rung above crossed a relay.
 - **The production `wss://` fleet.** The relay here is local, and the fleet is off. The bundle
   version fix (hop PR #64) means current-main relays accept this app's v14 bundles, so the fleet
   is no longer a version-compatibility question, but it has not been dialed.
@@ -743,7 +744,20 @@ are stored in the private evidence record at
 
 ### Limits
 
-The React Native SDK exports a relay pool and no mobile BLE or LAN bearer implementation.
-`src/hop/relayBearer.ts` is the only transport implementation. Radio discovery requires source
-implementation before it can be claimed. Channels remain blocked for release by the missing
+The current proof build packages native BLE and LAN bearer implementations beside RelayBearer.
+Neither direct path has a physical nonce receipt in this record.
+
+On 2026-08-26, physical Pixel 7 build `cf3a563` ran with Relay disabled and BLE selected against
+physical Test iPhone XR build `cf3a563+clean-after-ble`. The Pixel sent
+`GCPHYS-BLE-08785E1A-DD4C-405E-A5C4-58AEF765088A`; its rendered result was:
+
+```text
+FAIL: delivered=false relayed=0 forwardHops=0 via ble, relay=disabled in 31144 ms
+```
+
+The iPhone's device log stayed at `links=0`, with no receipt of that nonce. Pixel had
+Bluetooth Scan, Connect, and Advertise permission grants. iPhone's LAN manager returned iOS Local
+Network `NoAuth`, while CoreBluetooth authorization remained not determined. This is a precise
+failed direct-bearer run, not a delivery. It can only proceed after the person holding the iPhone
+handles those system permission prompts. Channels remain blocked for release by the missing
 published ABI 6 SDK.

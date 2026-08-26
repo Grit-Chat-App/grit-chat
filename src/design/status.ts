@@ -200,22 +200,21 @@ export function relayPlain(state: RelayStateName): string {
     case 'up':
       return 'A relay link is open. It can carry packets, but only a delivered message proves that a Hop relay accepted them.';
     case 'connecting':
-      return 'Dialing your relay. Until the link is open, messages cannot leave this device.';
+      return 'Dialing your relay. Until the link is open, a message may still travel over a live Bluetooth or local-network link.';
     case 'retrying':
-      return 'Your relay is offline. The app retries after the interval shown below, and messages wait on this device until it answers.';
+      return 'Your relay is offline. The app retries after the interval shown below. A message may still travel over a live Bluetooth or local-network link.';
     case 'down':
-      return 'Your relay is offline. Messages cannot leave this device until it is back. Check the endpoint on the connection screen.';
+      return 'Your relay is offline. A message may still travel over a live Bluetooth or local-network link; otherwise check the endpoint on the connection screen.';
     case 'unconfigured':
-      return 'No relay is configured, so messages cannot leave this device. Ask your relay operator for a supported WSS endpoint, then set it on the connection screen.';
+      return 'No relay is configured. A message may still travel over a live Bluetooth or local-network link; otherwise ask your relay operator for a supported WSS endpoint, then set it on the connection screen.';
   }
 }
 
 /**
  * How a peer is reachable right now, in the vocabulary this build can honestly use.
  *
- * There is no direct-radio state, because the React Native Hop SDK ships no Bluetooth or
- * local-network bearer: claiming "nearby" would be a lie. When a radio bearer lands, `direct` joins
- * this union and gets its own silhouette.
+ * Native Bluetooth and local-network bearers exist, but the consumer reach status does not yet
+ * distinguish them. Until it does, this union must not label a direct link "nearby".
  */
 export type ReachKind = 'relay' | 'norelay';
 
