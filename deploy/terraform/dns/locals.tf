@@ -43,7 +43,9 @@ locals {
   firebase_dns_rrdatas = {
     for key, record_set in local.firebase_dns_record_sets : key => [
       for rdata in lookup(var.firebase_dns_rrdatas, key, []) :
-      record_set.type == "TXT" ? "\"${rdata}\"" : rdata
+      record_set.type == "TXT" ? "\"${rdata}\"" : (
+        record_set.type == "CNAME" && !endswith(rdata, ".") ? "${rdata}." : rdata
+      )
     ]
   }
 
