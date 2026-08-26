@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |s|
   s.name = "HopContract"
-  s.version = "0.0.2-dev.1"
+  s.version = "0.0.2"
   s.summary = "The Hop bearer contract (pure Swift, no libhop)."
   s.homepage = "https://github.com/hopmesh/hop"
   s.license = {:type => "Apache-2.0", :file => "LICENSE.md"}

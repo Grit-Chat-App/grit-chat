@@ -75,6 +75,8 @@
 	<!-- Location: foreground only, when the user shares, reads a shared fix, or opens its offline compass. Never background tracking. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Grit Chat uses your location only when you choose to share where you are, read how far a shared location is from you, or point its offline compass toward a shared location.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Grit Chat uses your location while you use nearby-device discovery, share where you are, read a shared fix, or open its offline compass. It does not track your location in the background.</string>
 	<!-- Voice notes: the composer records a short message and sends it as media. -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Grit Chat uses the microphone to record voice notes you choose to send.</string>
@@ -85,6 +87,12 @@
 	<!-- CoreBluetooth needs this before the native BLE bearer can scan, advertise and connect. -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Grit Chat uses Bluetooth to discover nearby Hop devices and exchange messages directly.</string>
+	<!-- Hop's BLE bearer restores its central and peripheral managers after iOS suspends the app. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+	</array>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<!-- Every font file bundled into the app. iOS registers only what is listed here, and React
