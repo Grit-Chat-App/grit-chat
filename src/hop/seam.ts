@@ -414,7 +414,7 @@ export class GritSeam {
     this.redialAttempt = Math.min(this.redialAttempt + 1, RELAY_REDIAL_MAX_ATTEMPT);
     this.reportRelay(
       'retrying',
-      `relay pool: ${pool.total} endpoint(s) known, ${pool.available} dialable, next try in ${Math.round(delay / 1000)}s`,
+      `retrying in ${Math.round(delay / 1000)}s: ${pool.total} endpoint(s) known, ${pool.available} dialable`,
     );
     this.redialTimer = setTimeout(() => {
       this.redialTimer = null;

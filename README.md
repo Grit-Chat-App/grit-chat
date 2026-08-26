@@ -9,9 +9,9 @@ historical records, where rewriting it would falsify what actually happened.
 
 ## What the app is
 
-React Native (iOS today). The seam rule from the old Swift app carries over exactly: every Hop
-touchpoint lives in `src/hop/` (the seam), screens and stores never import the SDK, and the seam is
-the only file that changes when the SDK surface moves.
+React Native on iOS and Android. The seam rule from the old Swift app carries over exactly: every
+Hop touchpoint lives in `src/hop/` (the seam), screens and stores never import the SDK, and the seam
+is the only file that changes when the SDK surface moves.
 
 | Path | What it is |
 |---|---|
@@ -47,7 +47,7 @@ published `v0.0.2` SDK.
 
 ## Working path
 
-`PATH.md` is the single ladder: rungs 0 through 2, the exact commands, and the real traces. The
+`PATH.md` is the single ladder: rungs 0 through 3, the exact commands, and the real traces. The
 Detox suite is the regression net for what the rungs prove.
 
 ```

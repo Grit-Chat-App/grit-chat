@@ -96,10 +96,11 @@ describe('relay states', () => {
     expect(new Set(glyphs).size).toBe(4);
   });
 
-  it('does not call an unset relay a failure', () => {
+  it('distinguishes an unset relay from an offline endpoint', () => {
     const unset = relayView('unconfigured');
-    expect(unset.label).toBe('relay not set');
+    expect(unset.label).toBe('relay not configured');
     expect(unset.tone).not.toBe('failed');
+    expect(relayView('down').label).toBe('relay offline');
     expect(relayView('down').tone).toBe('failed');
   });
 
