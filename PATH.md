@@ -617,7 +617,7 @@ xcodebuild ... DEVELOPMENT_TEAM=8H7HVPHS87
 ```
 
 That builds fully offline against the existing wildcard profile
-(`iOS Team Provisioning Profile: *`, UUID `57b0ea8f-4dd7-44c0-be78-45832c8baf94`, app id
+(`iOS Team Provisioning Profile: *`, UUID `[REDACTED-PROFILE-IDENTIFIER]`, app id
 `8H7HVPHS87.*`, expires 2027-08-20, five devices including this exact UDID). No password prompt,
 no network round trip, no App ID registered with Apple. A dev install on his own phone under his
 own profile commits him to nothing; the which-team-ships decision is still unspent.
