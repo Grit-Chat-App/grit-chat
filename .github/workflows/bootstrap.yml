@@ -1,0 +1,48 @@
+# One-time trusted CI bootstrap.
+#
+# This workflow exists because WIF and a GCS Terraform backend cannot bootstrap
+# themselves. It accepts a short-lived user OAuth access token only during a
+# manually dispatched run on trusted default-branch code. After the run, the
+# supervising operator deletes that GitHub secret immediately and permanent jobs
+# use WIF only.
+#
+# Security boundary:
+# - workflow_dispatch only, never pull_request, pull_request_target, or workflow_run
+# - dispatch must target main
+# - checkout explicitly pins main, not the ref a dispatcher selected
+# - no package manager, build, or branch-authored application code executes while
+#   the temporary token is in scope
+# - GitHub permissions are contents:read only
+name: Bootstrap CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    # workflow_dispatch can target a branch. Refuse every branch except the
+    # default branch before any step materializes the temporary OAuth secret.
+    if: github.event.repository.default_branch == 'main' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: refs/heads/main
+          persist-credentials: false
+
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Create the permanent CI trust and state backend
+        env:
+          CLOUDSDK_AUTH_ACCESS_TOKEN: ${{ secrets.GCP_BOOTSTRAP_ACCESS_TOKEN }}
+          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_STATE_BUCKET_LOCATION: ${{ vars.TF_STATE_BUCKET_LOCATION }}
+          TF_SERVICE_ACCOUNT_ID: ${{ vars.TF_SERVICE_ACCOUNT_ID }}
+          WIF_POOL_ID: ${{ vars.WIF_POOL_ID }}
+          WIF_PROVIDER_ID: ${{ vars.WIF_PROVIDER_ID }}
+          WIF_PRINCIPAL_SET: ${{ secrets.WIF_PRINCIPAL_SET }}
+        run: bash scripts/bootstrap-ci.sh

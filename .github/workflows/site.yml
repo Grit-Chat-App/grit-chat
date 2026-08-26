@@ -90,7 +90,7 @@ jobs:
     if: >-
       github.event_name != 'pull_request' &&
       vars.TF_WIF_PROVIDER != '' &&
-      vars.FIREBASE_DEPLOY_SERVICE_ACCOUNT != '' &&
+      vars.TF_SERVICE_ACCOUNT != '' &&
       vars.GCP_PROJECT != '' &&
       vars.GRIT_HOSTING_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-24.04
@@ -115,7 +115,7 @@ jobs:
         with:
           project_id: ${{ vars.GCP_PROJECT }}
           workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
-          service_account: ${{ vars.FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
+          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
           create_credentials_file: true
           export_environment_variables: true
 
