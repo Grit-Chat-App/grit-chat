@@ -1,18 +1,14 @@
-// Arrival wiring: register listeners on the seam that turn a persisted arrival into a local
-// notification and keep the badge honest. These run in parallel to, and do not replace, the persist
-// listeners in GritContext. The seam fans every arrival to all registered listeners, so adding a
-// notification listener never changes what gets stored.
-//
-// The badge is computed as the current unread total plus this arrival, because the persist listener
-// that actually writes the row is fire-and-forget and may not have finished when we run. That makes
-// the number honest about the arrival we are announcing, not one behind it.
+// Arrival wiring: register observers that turn persisted ordinary arrivals into local notifications
+// and keep the badge honest. GritContext registers its classifier first, so this observer runs only
+// after a direct message is durable. Profile control cards leave that classifier without entering a
+// chat thread and are filtered here.
 
 import {AppState} from 'react-native';
 
 import type {GritSeam} from '../hop/seam';
 import type {ConversationStore} from '../store/conversations';
 import type {ChannelStore} from '../store/channels';
-import {shortAddress} from '../store/conversations';
+import {PROFILE_CONTENT_TYPE} from '../profile/protocol';
 import {decideArrival, previewOf} from './notify';
 import {presentArrival, setUnreadBadge} from './bridge';
 import {focus} from './focus';
@@ -36,9 +32,10 @@ export function wireArrivals(seam: GritSeam, store: ConversationStore, channels:
   };
 
   seam.onInbound((m) => {
-    const contact = store.contactByAddress(m.from);
-    const label =
-      contact != null && contact.label !== shortAddress(m.from) ? contact.label : shortAddress(m.from);
+    if (m.contentType === PROFILE_CONTENT_TYPE) {
+      return;
+    }
+    const label = store.displayNameFor(m.from);
     const notice = decideArrival({
       appActive: focus.isAppActive(),
       openConversation: focus.reading().conversation,
@@ -60,13 +57,7 @@ export function wireArrivals(seam: GritSeam, store: ConversationStore, channels:
     if (channel == null) {
       return true;
     }
-    const senderContact = m.sender != null ? store.contactByAddress(m.sender) : null;
-    const senderLabel =
-      m.sender != null
-        ? senderContact != null && senderContact.label !== shortAddress(m.sender)
-          ? senderContact.label
-          : shortAddress(m.sender)
-        : null;
+    const senderLabel = m.sender != null ? store.displayNameFor(m.sender) : null;
     const notice = decideArrival({
       appActive: focus.isAppActive(),
       openConversation: focus.reading().conversation,

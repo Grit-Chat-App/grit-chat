@@ -90,6 +90,12 @@ export function IdentityScreen({navigation}: Props): React.JSX.Element {
           }}
           testID="identity-copy"
         />
+        <GhostButton
+          label="Edit your profile"
+          icon="user"
+          onPress={() => navigation.navigate('Profile')}
+          testID="identity-open-profile"
+        />
 
         <View style={styles.divider} />
 

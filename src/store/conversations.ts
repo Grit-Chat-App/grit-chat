@@ -3,13 +3,18 @@
 // write before resolving: a message that "sent" but never landed on disk is a message the user
 // believes they sent and the app cannot prove.
 
+import {PendingProfile, SharedProfile} from '../profile/types';
 import {KeyValueStore} from './kv';
 
 export interface Contact {
   /** The conversation key IS the peer's base58 address. One conversation per address. */
   address: string;
-  /** Human label, defaults to a short form of the address until the user names it. */
-  label: string;
+  /** Recipient-owned name. A sender profile may never overwrite this field. */
+  localAlias?: string;
+  /** Sender-supplied metadata the recipient explicitly accepted. */
+  sharedProfile?: SharedProfile;
+  /** Sender-supplied metadata waiting for the recipient's choice. */
+  pendingProfile?: PendingProfile;
   createdAt: number;
 }
 
@@ -62,6 +67,82 @@ const MESSAGES_KEY = 'grit.messages.v1';
 // go first; this is stated in the UI's honesty notes rather than hidden.
 const MAX_MESSAGES = 2000;
 
+function nonBlank(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizedSharedProfile(value: unknown): SharedProfile | undefined {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const raw = value as Partial<SharedProfile>;
+  if (!Number.isInteger(raw.revision) || !Number.isInteger(raw.receivedAt) || (raw.revision ?? 0) < 0) {
+    return undefined;
+  }
+  const photo =
+    raw.photo != null &&
+    typeof raw.photo.uri === 'string' &&
+    raw.photo.contentType === 'image/jpeg' &&
+    Number.isInteger(raw.photo.byteLength) &&
+    raw.photo.byteLength > 0
+      ? raw.photo
+      : undefined;
+  const name = nonBlank(raw.name);
+  const contact = nonBlank(raw.contact);
+  if (name == null && contact == null && photo == null) {
+    return undefined;
+  }
+  return {name, contact, photo, revision: raw.revision as number, receivedAt: raw.receivedAt as number};
+}
+
+function normalizedPendingProfile(value: unknown): PendingProfile | undefined {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const raw = value as Partial<PendingProfile>;
+  const profile = normalizedSharedProfile(raw);
+  const messageId = nonBlank(raw.messageId);
+  return profile != null && messageId != null ? {...profile, messageId} : undefined;
+}
+
+function normalizeContacts(value: unknown): {contacts: Contact[]; changed: boolean} {
+  if (!Array.isArray(value)) {
+    return {contacts: [], changed: value != null};
+  }
+  let changed = false;
+  const contacts: Contact[] = [];
+  for (const rawValue of value) {
+    if (rawValue == null || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+      changed = true;
+      continue;
+    }
+    const raw = rawValue as Contact & {label?: unknown};
+    const address = nonBlank(raw.address);
+    if (address == null) {
+      changed = true;
+      continue;
+    }
+    const fallback = shortAddress(address);
+    const localAlias = nonBlank(raw.localAlias) ?? (nonBlank(raw.label) !== fallback ? nonBlank(raw.label) : undefined);
+    const contact: Contact = {
+      address,
+      localAlias: localAlias === fallback ? undefined : localAlias,
+      sharedProfile: normalizedSharedProfile(raw.sharedProfile),
+      pendingProfile: normalizedPendingProfile(raw.pendingProfile),
+      createdAt: Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now(),
+    };
+    if (JSON.stringify(raw) !== JSON.stringify(contact)) {
+      changed = true;
+    }
+    contacts.push(contact);
+  }
+  return {contacts, changed};
+}
+
 export class ConversationStore {
   private contacts: Contact[] = [];
   private messages: StoredMessage[] = [];
@@ -94,7 +175,8 @@ export class ConversationStore {
       this.kv.getItem(CONTACTS_KEY),
       this.kv.getItem(MESSAGES_KEY),
     ]);
-    this.contacts = contactsRaw ? (JSON.parse(contactsRaw) as Contact[]) : [];
+    const normalized = normalizeContacts(contactsRaw ? JSON.parse(contactsRaw) : []);
+    this.contacts = normalized.contacts;
     this.messages = messagesRaw ? (JSON.parse(messagesRaw) as StoredMessage[]) : [];
     const before = this.messages.length;
     const hadForwardMs = this.messages.some((m) => 'forwardMs' in m);
@@ -103,7 +185,7 @@ export class ConversationStore {
     }
     this.messages = collapseDuplicateMessages(this.messages);
     this.loaded = true;
-    if (this.messages.length !== before || hadForwardMs) {
+    if (normalized.changed || this.messages.length !== before || hadForwardMs) {
       await this.persist();
     }
   }
@@ -157,41 +239,97 @@ export class ConversationStore {
     return this.contacts.find((c) => c.address === address);
   }
 
-  /**
-   * What to CALL someone on screen. Name-first: a person reads a name, and a base58 string is not
-   * one. When a contact has a real label, that is the answer; otherwise the short address is, since
-   * an unnamed peer has nothing else to be called. This lives here, once, so every screen that shows
-   * a person agrees, and so the address is demoted rather than deleted: the detail views still print
-   * it in full, which is what someone compares against a peer reading theirs aloud.
-   */
-  labelFor(address: string): string {
-    const short = shortAddress(address);
+  /** The name policy for every conversation and notification surface. */
+  displayNameFor(address: string): string {
     const contact = this.contactByAddress(address);
-    return contact != null && contact.label !== short ? contact.label : short;
+    return nonBlank(contact?.localAlias) ?? nonBlank(contact?.sharedProfile?.name) ?? shortAddress(address);
   }
 
-  /**
-   * Add a contact, or rename an existing one. Duplicate adds by address are the common case (the
-   * peer already exists) and are reported as such rather than thrown.
-   */
-  async addContact(address: string, label?: string): Promise<{added: boolean; contact: Contact}> {
+  hasDisplayNameFor(address: string): boolean {
+    const contact = this.contactByAddress(address);
+    return nonBlank(contact?.localAlias) != null || nonBlank(contact?.sharedProfile?.name) != null;
+  }
+
+  /** Add a contact or change only this device's local alias. */
+  async addContact(address: string, localAlias?: string): Promise<{added: boolean; contact: Contact}> {
     this.assertLoaded();
     const existing = this.contactByAddress(address);
+    const nextAlias = nonBlank(localAlias);
     if (existing) {
-      if (label != null && label.length > 0 && label !== existing.label) {
-        existing.label = label;
+      if (nextAlias != null && nextAlias !== existing.localAlias) {
+        existing.localAlias = nextAlias;
         await this.persist();
       }
       return {added: false, contact: existing};
     }
     const contact: Contact = {
       address,
-      label: label != null && label.length > 0 ? label : shortAddress(address),
+      localAlias: nextAlias === shortAddress(address) ? undefined : nextAlias,
       createdAt: Date.now(),
     };
     this.contacts.push(contact);
     await this.persist();
     return {added: true, contact};
+  }
+
+  async setLocalAlias(address: string, localAlias: string): Promise<void> {
+    this.assertLoaded();
+    const contact = this.contactByAddress(address);
+    if (contact == null) {
+      throw new Error('Contact does not exist.');
+    }
+    const nextAlias = nonBlank(localAlias);
+    if (contact.localAlias === nextAlias || (nextAlias === shortAddress(address) && contact.localAlias == null)) {
+      return;
+    }
+    contact.localAlias = nextAlias === shortAddress(address) ? undefined : nextAlias;
+    await this.persist();
+  }
+
+  /** Stage an authenticated direct profile. No pending name is used for ordinary display. */
+  async stageProfile(address: string, pending: PendingProfile): Promise<'staged' | 'stale' | 'duplicate'> {
+    this.assertLoaded();
+    let contact = this.contactByAddress(address);
+    if (contact == null) {
+      const result = await this.addContact(address);
+      contact = result.contact;
+    }
+    const acceptedRevision = contact.sharedProfile?.revision ?? -1;
+    if (pending.revision <= acceptedRevision) {
+      return 'stale';
+    }
+    const existing = contact.pendingProfile;
+    if (existing != null && pending.revision <= existing.revision) {
+      return pending.messageId === existing.messageId ? 'duplicate' : 'stale';
+    }
+    contact.pendingProfile = pending;
+    await this.persist();
+    return 'staged';
+  }
+
+  /** Apply sender data only after the recipient explicitly chooses it. */
+  async acceptPendingProfile(address: string): Promise<boolean> {
+    this.assertLoaded();
+    const contact = this.contactByAddress(address);
+    if (contact?.pendingProfile == null) {
+      return false;
+    }
+    const {messageId: _messageId, ...profile} = contact.pendingProfile;
+    contact.sharedProfile = profile;
+    delete contact.pendingProfile;
+    await this.persist();
+    return true;
+  }
+
+  async rejectPendingProfile(address: string): Promise<boolean> {
+    this.assertLoaded();
+    const contact = this.contactByAddress(address);
+    if (contact?.pendingProfile == null) {
+      return false;
+    }
+    delete contact.pendingProfile;
+    await this.persist();
+    return true;
   }
 
   async removeContact(address: string): Promise<void> {
@@ -238,8 +376,7 @@ export class ConversationStore {
     return message;
   }
 
-  /** Record an inbound message. Returns null on a duplicate inbox id: Hop repeats inbox items
-   * until accepted, and a slow accept can surface the same message twice. */
+  /** Record an inbound message. Returns null on a duplicate inbox id. */
   async appendInbound(
     from: string,
     body: string,
@@ -269,11 +406,7 @@ export class ConversationStore {
     return message;
   }
 
-  /** Fold a delivery snapshot into the outbound message it belongs to.
-   * Never downgrades: overlapping persist() calls from fire-and-forget onUpdate
-   * handlers were measured to write an early relayed=0 snapshot over a later
-   * delivered=true one, so the chat showed "nobody carrying it" for a message
-   * the protocol had already confirmed. */
+  /** Fold a delivery snapshot into the outbound message it belongs to. */
   async applyDelivery(id: string, snapshot: DeliverySnapshot): Promise<void> {
     this.assertLoaded();
     const message = this.messages.find((m) => m.id === id && m.direction === 'out');
@@ -311,9 +444,9 @@ export class ConversationStore {
   async markRead(contact: string): Promise<void> {
     this.assertLoaded();
     let changed = false;
-    for (const m of this.messages) {
-      if (m.contact === contact && m.direction === 'in' && m.readAt == null) {
-        m.readAt = Date.now();
+    for (const message of this.messages) {
+      if (message.contact === contact && message.direction === 'in' && message.readAt == null) {
+        message.readAt = Date.now();
         changed = true;
       }
     }
@@ -337,9 +470,7 @@ export function shortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-5)}`;
 }
 
-/** One row per bundle id. Proof re-runs were measured to append the same id twice, which
- * React then refuses to render (duplicate key) and which made the older delivery snapshot
- * look like a second message still in flight. */
+/** One row per bundle id. */
 function collapseDuplicateMessages(messages: StoredMessage[]): StoredMessage[] {
   const byId = new Map<string, StoredMessage>();
   for (const message of messages) {

@@ -1,172 +1,146 @@
-// THE SIGNATURE ELEMENT. Every Hop message physically travels person to person, and the protocol
-// says exactly how far: outbound carries relayed and forwardHops, inbound carries hops. No other
-// messenger can show you the route a message took to reach you.
-//
-// THE SHAPE, and why it changed. This used to draw one dot per peer with a vertical bar before the
-// terminal mark, so the trace was as wide as the journey was long and the count had to be counted.
-// It now reads as three things, always in the same places:
-//
-//   (o) --> (3) --> check
-//    me      hops    state
-//
-// A circle for me, the sender. An arrow to a circle carrying the hop count as a numeral. An arrow
-// to a terminal glyph that says how it ended. Constant width whatever the count, and the number is
-// read rather than counted.
-//
-// The plain-language caption stays beside it. The trace is more iconic than what it replaced, so
-// the words carry more weight now, not less, and the redundancy is the point.
-//
-// ENCODING, unchanged from src/design/status.ts: shape first, then position, then words, then
-// colour. The terminal glyph differs in silhouette per state (chevron, check, times) so the states
-// survive dust, sunlight and colourblindness before any colour is parsed. Sage means confirmed
-// delivery and nothing else, sodium means in flight, ember means failed.
+import React, {useState} from 'react';
+import {Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 
-import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-
-import {palette, space, type} from '../design/tokens';
 import {
-  OutboundStatus,
-  TraceView,
-  COUNT_MAX_CHARS,
-  countLabel,
+  compactInboundDeliveryText,
+  compactOutboundDeliveryText,
   inboundTrace,
+  OutboundStatus,
   outboundTrace,
-  terminalGlyph,
 } from '../design/status';
-
-const TONE_COLOR = {
-  quiet: palette.alkaliFaint,
-  moving: palette.sodium,
-  confirmed: palette.sage,
-  failed: palette.emberBright,
-} as const;
-
-// The count circle is sized from COUNT_MAX_CHARS, not from a guess, so it can always hold what
-// countLabel can return. That matters because the clamp is "99+" rather than "99": three characters,
-// not two. An earlier version sized this for two digits while the function could produce three, so a
-// hop count over 99 would have overflowed the circle it was supposedly clamped to fit.
-//
-// IBM Plex Mono advances 0.6em, so at 13px each character is 7.8px wide. Three of them is 23.4px of
-// ink, and a circle's widest chord is its diameter, so 28 leaves about 2px of breathing room each
-// side. Constant whatever the count, which is the point of the redesign.
-const COUNT_CHAR_WIDTH = 7.8;
-const COUNT_DIAMETER = Math.ceil(COUNT_MAX_CHARS * COUNT_CHAR_WIDTH) + 4;
-const ME_DIAMETER = 10;
-const GLYPH_SIZE = 15;
-const ARROW_SIZE = 11;
+import {palette, radius, size, space, type} from '../design/tokens';
 
 export type TraceProps = {testID?: string; silent?: boolean} & (
   | ({direction: 'out'} & OutboundStatus)
   | {direction: 'in'; hops: number}
 );
-function Arrow({color}: {color: string}): React.JSX.Element {
-  return (
-    <Icon
-      name="long-arrow-right"
-      size={ARROW_SIZE}
-      color={color}
-      style={styles.arrow}
-      // Decorative: the meaning is in the circles, the glyph and the caption.
-      accessibilityElementsHidden
-      importantForAccessibility="no"
-    />
-  );
+
+function detailFor(props: TraceProps): string {
+  if (props.direction === 'in') {
+    return `Hop reported ${props.hops} ${props.hops === 1 ? 'hop' : 'hops'} to reach this device.`;
+  }
+  if (props.sendState === 'sending') {
+    return 'Hop has accepted this message and is preparing delivery.';
+  }
+  if (props.sendState === 'failed') {
+    return 'Hop did not confirm delivery before this send ended.';
+  }
+  if (props.sendState === 'delivered') {
+    const hops = props.forwardHops ?? 0;
+    return `The recipient confirmed delivery after ${hops} ${hops === 1 ? 'hop' : 'hops'}.`;
+  }
+  const relayed = props.relayed ?? 0;
+  return relayed === 0
+    ? 'Hop accepted this message, but no peer handoff has been reported yet.'
+    : `Hop handed this message to ${relayed} ${relayed === 1 ? 'peer' : 'peers'}. Delivery is still unconfirmed.`;
 }
 
-function Trace({view, color}: {view: TraceView; color: string}): React.JSX.Element {
-  // countLabel owns the two rules that are easy to get wrong: hollow and numeral-free when no peer
-  // holds a copy, and clamped rather than overflowing past 99. Both are unit tested.
-  const shown = countLabel(view);
-  const empty = shown == null;
-
-  return (
-    <View style={styles.row}>
-      <View style={[styles.me, {backgroundColor: color}]} />
-      <Arrow color={color} />
-      <View
-        style={[
-          styles.count,
-          empty ? {borderColor: color, borderWidth: 1.5} : {backgroundColor: color},
-        ]}>
-        {empty ? null : (
-          <Text style={styles.countText} allowFontScaling={false} numberOfLines={1}>
-            {shown}
-          </Text>
-        )}
-      </View>
-      <Arrow color={color} />
-      <Icon name={terminalGlyph(view.cap)} size={GLYPH_SIZE} color={color} />
-    </View>
-  );
-}
-
+/**
+ * The message row carries compact text. Numeric route state is available in a secondary modal, but
+ * the React Native SDK has no named path data, so the disclosure never invents intermediary names.
+ */
 export function HopTrace(props: TraceProps): React.JSX.Element {
-  const view = props.direction === 'in' ? inboundTrace(props.hops) : outboundTrace(props);
-  const color = TONE_COLOR[view.tone];
-  // The graphic is now iconic, so the accessibility label carries the whole meaning in words rather
-  // than leaving a screen reader to infer it from three shapes.
-  const spoken =
-    props.direction === 'in'
-      ? `Received. ${view.label}.`
-      : `Sent. ${view.label}.`;
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const label =
+    props.direction === 'out'
+      ? compactOutboundDeliveryText(props)
+      : compactInboundDeliveryText(props.hops);
+  const trace = props.direction === 'out' ? outboundTrace(props) : inboundTrace(props.hops);
+  const color =
+    trace.tone === 'confirmed'
+      ? palette.sage
+      : trace.tone === 'failed'
+        ? palette.emberBright
+        : trace.tone === 'moving'
+          ? palette.sodiumBright
+          : palette.dust;
+
+  if (props.silent === true) {
+    return <Text style={[styles.silent, {color}]}>{label}</Text>;
+  }
+
   return (
-    <View
-      testID={props.testID}
-      style={styles.wrap}
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={spoken}>
-      <Trace view={view} color={color} />
-      {props.silent === true ? null : (
-        <Text
-          style={[styles.label, {color}]}
-          testID={props.testID != null ? `${props.testID}-label` : undefined}>
-          {view.label}
+    <>
+      <TouchableOpacity
+        style={styles.compact}
+        onPress={() => setDetailsOpen(true)}
+        testID={props.testID}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}. Show delivery details.`}>
+        <Text style={[styles.label, {color}]} testID={props.testID != null ? `${props.testID}-label` : undefined}>
+          {label}
         </Text>
-      )}
-    </View>
+        <Text style={styles.detailsLink}>Details</Text>
+      </TouchableOpacity>
+      <Modal visible={detailsOpen} transparent animationType="fade" onRequestClose={() => setDetailsOpen(false)}>
+        <View style={styles.scrim}>
+          <View style={styles.details} testID={props.testID != null ? `${props.testID}-details` : undefined}>
+            <Text style={styles.detailsTitle}>Delivery details</Text>
+            <Text style={styles.detailsBody}>{detailFor(props)}</Text>
+            <TouchableOpacity
+              style={styles.close}
+              onPress={() => setDetailsOpen(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close delivery details">
+              <Text style={styles.closeText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  compact: {
+    minHeight: size.touchMin,
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    marginTop: space.xs,
     gap: space.s,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  me: {
-    width: ME_DIAMETER,
-    height: ME_DIAMETER,
-    borderRadius: ME_DIAMETER / 2,
-  },
-  arrow: {
-    marginHorizontal: space.xxs,
-    opacity: 0.75,
-  },
-  count: {
-    width: COUNT_DIAMETER,
-    height: COUNT_DIAMETER,
-    borderRadius: COUNT_DIAMETER / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Abyss on every tone fill: 9.94:1 on sodium, 8.69:1 on sage, 7.26:1 on ember, 6.20:1 on the
-  // quiet grey. One ink rule that clears AA on all four rather than a per-tone exception, and the
-  // numeral stays at a legible 13px instead of being shrunk to fit.
-  countText: {
-    ...type.monoMedium,
-    lineHeight: COUNT_DIAMETER,
-    color: palette.abyss,
   },
   label: {
     ...type.monoSmall,
+  },
+  detailsLink: {
+    ...type.monoSmall,
+    color: palette.alkaliFaint,
+    textDecorationLine: 'underline',
+  },
+  silent: {
+    ...type.monoSmall,
+    maxWidth: 112,
+    textAlign: 'right',
+  },
+  scrim: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: space.xl,
+    backgroundColor: 'rgba(8, 9, 17, 0.82)',
+  },
+  details: {
+    gap: space.l,
+    padding: space.xl,
+    borderRadius: radius.panel,
+    backgroundColor: palette.surface,
+  },
+  detailsTitle: {
+    ...type.title,
+    color: palette.alkali,
+  },
+  detailsBody: {
+    ...type.body,
+    color: palette.dust,
+  },
+  close: {
+    minHeight: size.touchMin,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.chip,
+    borderWidth: 1,
+    borderColor: palette.edge,
+  },
+  closeText: {
+    ...type.action,
+    color: palette.sodiumBright,
   },
 });

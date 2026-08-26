@@ -30,7 +30,7 @@ import {palette, radius, size, space, type} from '../design/tokens';
 import {timeLabel} from '../format';
 import {useReadyGrit, useRelayState, useStoreVersion} from '../app/GritContext';
 import type {RootStackParamList} from '../app/navigation';
-import {StoredMessage, shortAddress} from '../store/conversations';
+import {StoredMessage} from '../store/conversations';
 import {focus} from '../notifications/focus';
 import {askToNotifyOnce} from '../notifications/bridge';
 
@@ -71,12 +71,8 @@ export function ChatScreen({navigation, route}: Props): React.JSX.Element {
     };
   }, []);
 
-  const contact = store.contactByAddress(address);
   const messages = store.messagesFor(address);
-  const title =
-    contact != null && contact.label !== shortAddress(address)
-      ? contact.label
-      : shortAddress(address);
+  const title = store.displayNameFor(address);
 
   useEffect(() => {
     void store.markRead(address);
@@ -286,7 +282,19 @@ export function ChatScreen({navigation, route}: Props): React.JSX.Element {
           setCopied(true);
           setTimeout(() => setCopied(false), 1400);
         }}
-        right={<RelayPill state={relay.state} testID="chat-relay-pill" />}
+        right={
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.contactAction}
+              onPress={() => navigation.navigate('ContactProfile', {address})}
+              testID="chat-contact-profile"
+              accessibilityRole="button"
+              accessibilityLabel={`Contact details for ${title}`}>
+              <Icon name="user-o" size={size.iconSmall} color={palette.sodiumBright} />
+            </TouchableOpacity>
+            <RelayPill state={relay.state} testID="chat-relay-pill" />
+          </View>
+        }
       />
 
       {/* The tracked keyboard height is spent here, as padding on the container that owns the
@@ -439,6 +447,17 @@ const styles = StyleSheet.create({
   // up with the keyboard at all.
   fill: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+  },
+  contactAction: {
+    width: size.touchMin,
+    height: size.touchMin,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   empty: {
     flex: 1,
