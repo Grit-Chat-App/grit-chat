@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
-# Materialize the dev Hop Android Maven repository for the gradle build.
+# Materialize the development Hop Maven repository Grit Chat's Android build consumes.
 #
-# The single committed artifact is vendor/hop-android-maven-main-54a2e82.zip (provenance in
-# vendor/README-android-artifact.md). Gradle consumes sh.hop:hop as a REPOSITORY rather than a bare
-# .aar, because the POM carries net.java.dev.jna:jna and the Kotlin wrapper loads libhop THROUGH
-# JNA: a files() or flatDir dependency drops that transitive silently, builds green, and then dies
-# at the first bridge call. So this expands the repository layout, POM and all.
-#
-# Expanded output is gitignored: one committed archive, no second copy of a 17 MB artifact in git.
+# The one committed archive contains the Hop SDK plus the native BLE and LAN bearer AARs. Gradle needs
+# their POMs, not bare AAR files: the SDK POM carries JNA and each bearer POM carries the exact SDK
+# dependency. Provenance lives in vendor/README-android-artifact.md.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/.." && pwd)"
-zip="$root/vendor/hop-android-maven-main-54a2e82.zip"
-expected="1e9d36deeb4d1d8d39c152010e699edf33f25d7b2a2cdd1f28f61e08d26a5f7e"
+zip="$root/vendor/hop-android-maven-bearers-8c2a574.zip"
+expected="b10d45ce242aabddf3c183088b8e4cf4f6692ed2b8cd4e526e98a53a71db28f8"
 dest="$root/vendor/hop-android-maven"
 
 if [ ! -f "$zip" ]; then
@@ -20,17 +16,29 @@ if [ ! -f "$zip" ]; then
   exit 1
 fi
 
-# Checksum first, always, even when the tree is already expanded: a swapped archive must fail here
-# rather than link something nobody vetted.
+# Checksum first, even when the tree is already expanded: a swapped archive must fail before Gradle
+# can link it.
 echo "$expected  $zip" | shasum -a 256 -c - >/dev/null
 
-if [ -d "$dest/maven-repository/sh/hop/hop" ]; then
-  echo "already present: $dest/maven-repository"
-  exit 0
+required=(
+  "$dest/maven-repository/sh/hop/hop/0.0.5/hop-0.0.5.aar"
+  "$dest/maven-repository/sh/hop/bearers/bearer-ble/0.0.2/bearer-ble-0.0.2.aar"
+  "$dest/maven-repository/sh/hop/bearers/bearer-lan/0.0.2/bearer-lan-0.0.2.aar"
+)
+needs_extract=false
+for file in "${required[@]}"; do
+  if [ ! -f "$file" ]; then
+    needs_extract=true
+    break
+  fi
+done
+if "$needs_extract"; then
+  rm -rf "$dest/maven-repository"
+  mkdir -p "$dest"
+  unzip -q "$zip" -d "$dest"
 fi
 
-mkdir -p "$dest"
-unzip -q "$zip" -d "$dest"
-test -f "$dest/maven-repository/sh/hop/hop/0.0.5/hop-0.0.5.aar"
-test -f "$dest/maven-repository/sh/hop/hop/0.0.5/hop-0.0.5.pom"
-echo "ok: $dest/maven-repository (sh.hop:hop:0.0.5)"
+for file in "${required[@]}"; do
+  test -f "$file"
+done
+echo "ok: $dest/maven-repository (sh.hop:hop:0.0.5 + BLE/LAN bearers)"
