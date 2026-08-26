@@ -14,6 +14,8 @@ resource "google_dns_managed_zone" "grit_chat" {
 
   visibility = "public"
 
+  depends_on = [google_project_service.dns]
+
   dnssec_config {
     # Off until delegation is verified. See variables.tf enable_dnssec for the
     # measurement behind that ordering: grit.chat publishes no DS record today,

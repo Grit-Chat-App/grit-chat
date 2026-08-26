@@ -65,6 +65,7 @@ permissions:
 env:
   TF_VERSION: 1.15.8
   TF_WORKING_DIR: deploy/terraform/dns
+  HOSTING_TF_WORKING_DIR: deploy/terraform/hosting
 
 jobs:
   # Runs everywhere including pull requests, because it needs no credential.
@@ -86,43 +87,54 @@ jobs:
         run: |
           terraform init -backend=false -input=false
           terraform validate
-
   plan:
     needs: static
     runs-on: ubuntu-latest
-    # Gate 1 and gate 2. The event check is redundant with the `on:` block for
-    # `push`, and it is kept because it is the line someone reads when they add a
-    # trigger later.
-    if: github.event_name != 'pull_request' && vars.TF_WIF_PROVIDER != ''
+    # A plan is meaningful only after trusted CI configuration exists. Missing
+    # configuration skips cleanly; a present configuration with missing Hosting
+    # state fails, which is the correct fail-closed result.
+    if: github.event_name != 'pull_request' && vars.TF_WIF_PROVIDER != '' && vars.TF_SERVICE_ACCOUNT != '' && vars.GCP_PROJECT != '' && vars.TF_STATE_BUCKET != ''
     steps:
       - uses: actions/checkout@v7.0.1
 
       - uses: google-github-actions/auth@v3.0.0
         with:
+          project_id: ${{ vars.GCP_PROJECT }}
           workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
           service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
 
       - uses: hashicorp/setup-terraform@v4.0.1
         with:
           terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Read Firebase DNS updates from private Hosting state
+        working-directory: ${{ env.HOSTING_TF_WORKING_DIR }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform output -json firebase_dns_records > "$RUNNER_TEMP/firebase-dns-records.json"
+          jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-records.json" >/dev/null
+          jq '{firebase_dns_records: .}' "$RUNNER_TEMP/firebase-dns-records.json" > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
 
       - name: Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
           TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
         run: |
-          terraform init -input=false \
-            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-          terraform plan -input=false -no-color
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform plan -input=false -no-color -var-file="$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
 
   apply:
     needs: plan
     runs-on: ubuntu-latest
-    # All three gates. `apply` on a dispatch requires the input as well, so a
-    # dispatch defaults to plan only.
     if: >-
       github.event_name != 'pull_request' &&
       vars.TF_WIF_PROVIDER != '' &&
+      vars.TF_SERVICE_ACCOUNT != '' &&
+      vars.GCP_PROJECT != '' &&
+      vars.TF_STATE_BUCKET != '' &&
       vars.GRIT_DNS_APPLY_ENABLED == 'true' &&
       (github.event_name != 'workflow_dispatch' || inputs.apply)
     steps:
@@ -130,21 +142,33 @@ jobs:
 
       - uses: google-github-actions/auth@v3.0.0
         with:
+          project_id: ${{ vars.GCP_PROJECT }}
           workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
           service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
 
       - uses: hashicorp/setup-terraform@v4.0.1
         with:
           terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Read Firebase DNS updates from private Hosting state
+        working-directory: ${{ env.HOSTING_TF_WORKING_DIR }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform output -json firebase_dns_records > "$RUNNER_TEMP/firebase-dns-records.json"
+          jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-records.json" >/dev/null
+          jq '{firebase_dns_records: .}' "$RUNNER_TEMP/firebase-dns-records.json" > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
 
       - name: Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
           TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
         run: |
-          terraform init -input=false \
-            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-          terraform apply -input=false -auto-approve -no-color
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform apply -input=false -auto-approve -no-color -var-file="$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
+
 
       # The nameservers cannot be known before the zone exists, so this is the
       # first moment they are readable. Printed rather than committed anywhere,
@@ -157,7 +181,10 @@ jobs:
       - name: Report delegation state
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
+          set -euo pipefail
           ready="$(terraform output -raw delegation_ready)"
+          firebase="$(terraform output -raw firebase_dns_ready)"
+          signing="$(terraform output -raw mail_signing_ready)"
           {
             echo "## grit.chat zone"
             echo
@@ -174,13 +201,13 @@ jobs:
             echo
             echo "DNSSEC: \`$(terraform output -raw dnssec_state)\`"
             echo
-            signing="$(terraform output -raw mail_signing_ready)"
             if [ "$ready" = "true" ]; then
-              echo "**Delegation ready.** Web records and inbound mail are both present."
+              echo "**Delegation ready.** Firebase generated records and inbound mail are present."
               echo "Changing nameservers at the registrar is safe."
             else
               echo "**DO NOT DELEGATE YET.** delegation_ready is false."
               echo
+              echo "- firebase_dns_ready: \`$firebase\`"
               echo "- web_ready: \`$(terraform output -raw web_ready)\`"
               echo "- mail_inbound_ready: \`$(terraform output -raw mail_inbound_ready)\`"
               echo

@@ -23,8 +23,13 @@ output "delegation_ready" {
 }
 
 output "web_ready" {
-  description = "True when the apex has address records or an ALIAS."
+  description = "True only when CI has materialized Firebase Hosting's generated desired DNS updates, including apex and www address behavior."
   value       = local.web_ready
+}
+
+output "firebase_dns_ready" {
+  description = "True when the private Hosting-state handoff contains Firebase generated RRsets for both apex and www."
+  value       = local.firebase_dns_ready
 }
 
 output "mail_inbound_ready" {

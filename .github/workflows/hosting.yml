@@ -1,0 +1,124 @@
+# Firebase Hosting CustomDomain discovery.
+#
+# Firebase creates ownership, certificate, and address requirements only after a
+# CustomDomain exists. This workflow discovers them without waiting for public DNS,
+# then stores them in private Terraform state for the DNS workflow's second phase.
+# It never publishes generated values into source, PR text, or repository settings.
+name: Hosting Control Plane
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/terraform/hosting/**"
+      - ".github/workflows/hosting.yml"
+  pull_request:
+    paths:
+      - "deploy/terraform/hosting/**"
+      - ".github/workflows/hosting.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply CustomDomain discovery. Requires GRIT_HOSTING_CONTROL_PLANE_APPLY_ENABLED=true."
+        type: boolean
+        default: false
+
+concurrency:
+  group: hosting-control-plane
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_VERSION: 1.15.8
+  TF_WORKING_DIR: deploy/terraform/hosting
+
+jobs:
+  static:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Format
+        run: terraform fmt -check -recursive ${{ env.TF_WORKING_DIR }}
+      - name: Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  plan:
+    needs: static
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'pull_request' && vars.TF_WIF_PROVIDER != '' && vars.TF_SERVICE_ACCOUNT != '' && vars.GCP_PROJECT != '' && vars.FIREBASE_HOSTING_SITE_ID != '' && vars.TF_STATE_BUCKET != ''
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: google-github-actions/auth@v3.0.0
+        with:
+          project_id: ${{ vars.GCP_PROJECT }}
+          workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
+          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Plan Hosting control plane
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
+          TF_VAR_hosting_site_id: ${{ vars.FIREBASE_HOSTING_SITE_ID }}
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform plan -input=false -no-color
+
+  apply:
+    needs: plan
+    runs-on: ubuntu-24.04
+    if: >-
+      github.event_name != 'pull_request' &&
+      vars.TF_WIF_PROVIDER != '' &&
+      vars.TF_SERVICE_ACCOUNT != '' &&
+      vars.GCP_PROJECT != '' &&
+      vars.FIREBASE_HOSTING_SITE_ID != '' &&
+      vars.TF_STATE_BUCKET != '' &&
+      vars.GRIT_HOSTING_CONTROL_PLANE_APPLY_ENABLED == 'true' &&
+      (github.event_name != 'workflow_dispatch' || inputs.apply)
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: google-github-actions/auth@v3.0.0
+        with:
+          project_id: ${{ vars.GCP_PROJECT }}
+          workload_identity_provider: ${{ vars.TF_WIF_PROVIDER }}
+          service_account: ${{ vars.TF_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+          export_environment_variables: true
+      - uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Apply Hosting control plane
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
+          TF_VAR_hosting_site_id: ${{ vars.FIREBASE_HOSTING_SITE_ID }}
+        run: |
+          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform apply -input=false -auto-approve -no-color
+
+      # Values stay in state. DNS reads them directly from the same private
+      # backend, so the job reports only whether discovery produced data.
+      - name: Report discovery state without disclosing DNS values
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          set -euo pipefail
+          count="$(terraform output -json firebase_dns_records | jq 'length')"
+          test "$count" -gt 0
+          {
+            echo "## Firebase Hosting DNS discovery"
+            echo "Generated DNS RRsets discovered: $count"
+            echo "Values remain in private Terraform state for the DNS workflow."
+          } >> "$GITHUB_STEP_SUMMARY"

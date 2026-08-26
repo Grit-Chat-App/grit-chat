@@ -31,7 +31,7 @@ export const site = {
    */
   origin: new URL(configured ?? PLACEHOLDER_ORIGIN).origin,
 
-  /** The product repository. Private today, so this link 404s for anyone not on the org. */
+  /** The public product repository. */
   repoUrl: 'https://github.com/Grit-Chat-App/grit-chat',
 
   /** Hop, the delay tolerant mesh protocol this is built on. */
