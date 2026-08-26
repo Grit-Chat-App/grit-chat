@@ -18,10 +18,9 @@ react {
     // cliFile = file("../../node_modules/react-native/cli.js")
 
     /* Variants */
-    //   The list of variants to that are debuggable. For those we're going to
-    //   skip the bundling of the JS bundle and the assets. Default is "debug", "debugOptimized".
-    //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
-    // debuggableVariants = ["liteDebug", "liteDebugOptimized", "prodDebug", "prodDebugOptimized"]
+    // Debug stays on React Native's normal Metro path. Proof is release-like and therefore bundles
+    // JavaScript, so a physical handset can launch it without Metro.
+    debuggableVariants = ["debug", "debugOptimized"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -158,9 +157,8 @@ android {
         // Off by default since AGP 8. GRIT_RELAY_URL above needs the generated BuildConfig class.
         buildConfig true
     }
-    // `detox build` passes -DtestBuildType=debug so :app:assembleAndroidTest produces the debug
-    // androidTest APK. Same as AGP's own default when nothing is passed.
-    testBuildType System.getProperty('testBuildType', 'debug')
+    // Instrumentation follows the standalone proof build unless a caller names another build type.
+    testBuildType System.getProperty('testBuildType', 'proof')
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -172,6 +170,11 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+        }
+        proof {
+            initWith release
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
         }
         release {
             // Caution! In production, you need to generate your own keystore file.
@@ -209,6 +212,11 @@ tasks.register('copyGritFonts', Copy) {
 // Every variant's asset merge depends on the copy, so a clean build cannot race it and produce an
 // APK with no fonts in it.
 tasks.matching { it.name ==~ /merge.*Assets/ }.configureEach {
+    dependsOn 'copyGritFonts'
+}
+// Lint reads each variant's merged asset sources. The report-model and analysis task names differ,
+// so every lint task explicitly depends on the generated font assets under Gradle 9.
+tasks.matching { it.name ==~ /(?i).*lint.*/ }.configureEach {
     dependsOn 'copyGritFonts'
 }
 
