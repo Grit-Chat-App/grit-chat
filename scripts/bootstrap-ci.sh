@@ -27,6 +27,7 @@ require GCP_PROJECT
 require TF_STATE_BUCKET
 require TF_STATE_BUCKET_LOCATION
 require TF_SERVICE_ACCOUNT_ID
+require TF_SERVICE_ACCOUNT
 require WIF_POOL_ID
 require WIF_PROVIDER_ID
 require WIF_PRINCIPAL_SET
@@ -71,7 +72,7 @@ run_private gcloud storage buckets update "gs://${TF_STATE_BUCKET}" \
   --versioning \
   --soft-delete-duration=7d
 
-service_account_email="${TF_SERVICE_ACCOUNT_ID}@${GCP_PROJECT}.iam.gserviceaccount.com"
+service_account_email="$TF_SERVICE_ACCOUNT"
 if ! gcloud iam service-accounts describe "$service_account_email" --project="$GCP_PROJECT" >/dev/null 2>&1; then
   run_private gcloud iam service-accounts create "$TF_SERVICE_ACCOUNT_ID" \
     --project="$GCP_PROJECT" \
