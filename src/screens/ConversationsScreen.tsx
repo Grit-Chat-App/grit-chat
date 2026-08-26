@@ -226,44 +226,54 @@ export function ConversationsScreen({navigation}: Props): React.JSX.Element {
           data={conversations}
           keyExtractor={(item) => item.contact.address}
           contentContainerStyle={styles.listBody}
-          renderItem={({item, index}) => (
-            <TouchableOpacity
-              testID={`conversation-row-${index}`}
-              style={styles.row}
-              onPress={() => navigation.navigate('Chat', {address: item.contact.address})}>
-              <View style={styles.rowMark}>
-                {item.contact.label !== shortAddress(item.contact.address) ? (
-                  <Text style={styles.rowMarkText}>{item.contact.label.slice(0, 2).toUpperCase()}</Text>
-                ) : (
-                  <View style={styles.rowNode} />
-                )}
-              </View>
-              <View style={styles.rowBody}>
-                <View style={styles.rowTop}>
-                  <Text style={styles.rowTitle} numberOfLines={1} testID={`conversation-label-${index}`}>
-                    {item.contact.label}
-                  </Text>
-                  <Text style={styles.rowTime}>{timeLabel(item.last?.at)}</Text>
+          renderItem={({item, index}) => {
+            // Contacts persisted by older builds can have no label. The current type says string,
+            // but a messenger must render existing device data rather than crashing before someone
+            // can correct it. The established short address is the honest fallback.
+            const label =
+              typeof item.contact.label === 'string' && item.contact.label.length > 0
+                ? item.contact.label
+                : shortAddress(item.contact.address);
+            const named = label !== shortAddress(item.contact.address);
+            return (
+              <TouchableOpacity
+                testID={`conversation-row-${index}`}
+                style={styles.row}
+                onPress={() => navigation.navigate('Chat', {address: item.contact.address})}>
+                <View style={styles.rowMark}>
+                  {named ? (
+                    <Text style={styles.rowMarkText}>{label.slice(0, 2).toUpperCase()}</Text>
+                  ) : (
+                    <View style={styles.rowNode} />
+                  )}
                 </View>
-                <Text style={styles.rowPreview} numberOfLines={1} testID={`conversation-preview-${index}`}>
-                  {preview(item)}
-                </Text>
-                {item.contact.label !== shortAddress(item.contact.address) ? (
-                  <Text style={styles.rowAddress} numberOfLines={1} testID={`conversation-address-${index}`}>
-                    {shortAddress(item.contact.address)}
-                  </Text>
-                ) : null}
-              </View>
-              <View style={styles.rowEnd}>
-                <LastMark item={item} />
-                {item.unread > 0 ? (
-                  <View style={styles.unread} testID={`conversation-unread-${index}`}>
-                    <Text style={styles.unreadText}>{item.unread}</Text>
+                <View style={styles.rowBody}>
+                  <View style={styles.rowTop}>
+                    <Text style={styles.rowTitle} numberOfLines={1} testID={`conversation-label-${index}`}>
+                      {label}
+                    </Text>
+                    <Text style={styles.rowTime}>{timeLabel(item.last?.at)}</Text>
                   </View>
-                ) : null}
-              </View>
-            </TouchableOpacity>
-          )}
+                  <Text style={styles.rowPreview} numberOfLines={1} testID={`conversation-preview-${index}`}>
+                    {preview(item)}
+                  </Text>
+                  {named ? (
+                    <Text style={styles.rowAddress} numberOfLines={1} testID={`conversation-address-${index}`}>
+                      {shortAddress(item.contact.address)}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.rowEnd}>
+                  <LastMark item={item} />
+                  {item.unread > 0 ? (
+                    <View style={styles.unread} testID={`conversation-unread-${index}`}>
+                      <Text style={styles.unreadText}>{item.unread}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
 
