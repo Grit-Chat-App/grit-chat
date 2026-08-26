@@ -625,6 +625,29 @@ When('the peer sends me a location', async function () {
   await waitFor(element(by.id('screen-chat'))).toBeVisible().withTimeout(TIMEOUT);
 });
 
+When('I open the offline compass', async () => {
+  await waitFor(element(by.id('message-location-0'))).toBeVisible().withTimeout(TIMEOUT);
+  await tap('message-location-0');
+  await waitFor(element(by.id('screen-compass'))).toBeVisible().withTimeout(TIMEOUT);
+});
+
+Then('the offline compass shows the shared target behind details', async () => {
+  await detoxExpect(element(by.id('compass-details'))).not.toExist();
+  await tap('compass-details-toggle');
+  await detoxExpect(element(by.id('compass-details'))).toBeVisible();
+  const coordinates = await textOf('compass-target-coordinates');
+  if (!/^-?\d+\.\d{5}, -?\d+\.\d{5}$/.test(coordinates)) {
+    throw new Error(`compass target coordinates are not a short coordinate pair: ${JSON.stringify(coordinates)}`);
+  }
+});
+
+Then('it states its sensor truth', async () => {
+  const status = await textOf('compass-status');
+  if (status.length === 0 || /map|tile|network/i.test(status)) {
+    throw new Error(`compass status is empty or claims an unrelated fallback: ${JSON.stringify(status)}`);
+  }
+});
+
 Then('the distance from my position is shown', async () => {
   // The receiver's own fix arrives asynchronously after the bubble renders; wait for the line
   // rather than reading an element that may not exist yet.

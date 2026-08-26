@@ -2,6 +2,8 @@
 // identity screen, and channels beside one to one conversations. A tab bar would spend permanent
 // screen height on that.
 
+import type {LocationFix} from '../hop/location';
+
 export type RootStackParamList = {
   Conversations: undefined;
   Chat: {address: string};
@@ -15,4 +17,6 @@ export type RootStackParamList = {
   ScanContact: undefined;
   /** Host management for a channel: pending joins, members, invites. */
   ChannelManage: {path: string};
+  /** Offline compass for a received location message. Coordinates come from persisted message data. */
+  Compass: {target: LocationFix};
 };

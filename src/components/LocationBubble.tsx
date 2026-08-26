@@ -13,7 +13,7 @@
 //   unparseable      said in words; never invented coordinates
 
 import React, {useEffect, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {readOneFix} from '../hop/geolocation';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
@@ -39,6 +39,7 @@ export function LocationBubble({
   at,
   testID,
   fromHere,
+  onOpenCompass,
 }: {
   body: string;
   at: number;
@@ -46,6 +47,11 @@ export function LocationBubble({
   /** Show the distance and bearing from the reader's own fix. A RECEIVER's aid: for the sender's
    *  own message the distance to themselves is meaningless, so outbound rows leave it off. */
   fromHere: boolean;
+  /**
+   * Present only for a received message. The caller owns navigation because this component is
+   * shared by direct and channel screens; the bubble owns the accessible tap target.
+   */
+  onOpenCompass?: (target: LocationFix) => void;
 }): React.JSX.Element {
   const fix = decodeFix(body);
   const [own, setOwn] = useState<OwnFixState>({kind: 'waiting'});
@@ -89,7 +95,14 @@ export function LocationBubble({
   const coordText = `${fix.lat.toFixed(5)}, ${fix.lon.toFixed(5)}`;
 
   return (
-    <View style={styles.frame} testID={testID}>
+    <TouchableOpacity
+      style={styles.frame}
+      testID={testID}
+      disabled={onOpenCompass == null}
+      onPress={() => onOpenCompass?.(fix)}
+      accessibilityRole={onOpenCompass != null ? 'button' : undefined}
+      accessibilityLabel={onOpenCompass != null ? 'Open offline compass for this shared location' : undefined}
+      accessibilityHint={onOpenCompass != null ? 'Opens a compass that points toward the shared coordinates' : undefined}>
       <View style={styles.titleRow}>
         <Icon name="map-marker" size={16} color={palette.sodiumBright} />
         <Text style={styles.title} testID={`${testID}-title`}>
@@ -116,7 +129,7 @@ export function LocationBubble({
           reading your position for a distance…
         </Text>
       ) : null}
-    </View>
+    </TouchableOpacity>
   );
 }
 

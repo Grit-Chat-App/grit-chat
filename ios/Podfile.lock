@@ -42,6 +42,53 @@ PODS:
   - HopSDK (0.0.2-dev.1):
     - CHop (= 0.0.2-dev.1)
     - HopContract (= 0.0.2-dev.1)
+  - NitroCompass (1.2.5):
+    - hermes-engine
+    - NitroModules
+    - RCTRequired
+    - RCTTypeSafety
+    - React-bridging
+    - React-callinvoker
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - NitroModules (0.37.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-bridging
+    - React-callinvoker
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RCT-Folly (2024.11.18.00):
     - RCT-Folly/Default (= 2024.11.18.00)
     - ReactNativeDependencies
@@ -1968,6 +2015,8 @@ DEPENDENCIES:
   - HopContract (from `hop-pods/HopContract`)
   - "HopMesh (from `../node_modules/@hop-mesh/react-native`)"
   - HopSDK (from `hop-pods/HopSDK`)
+  - NitroCompass (from `../node_modules/react-native-nitro-compass`)
+  - NitroModules (from `../node_modules/react-native-nitro-modules`)
   - RCT-Folly (from `build/rndeps-facades/RCT-Folly`)
   - RCTDeprecation (from `build/rncore-facades/RCTDeprecation`)
   - RCTRequired (from `build/rncore-facades/RCTRequired`)
@@ -2084,6 +2133,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@hop-mesh/react-native"
   HopSDK:
     :path: hop-pods/HopSDK
+  NitroCompass:
+    :path: "../node_modules/react-native-nitro-compass"
+  NitroModules:
+    :path: "../node_modules/react-native-nitro-modules"
   RCT-Folly:
     :path: build/rndeps-facades/RCT-Folly
   RCTDeprecation:
@@ -2267,7 +2320,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   boost: 8502bfdc46e2804408af2e163049ece181009af4
-  CHop: 38af70f06408b172cd8ebb69ca1513ab3ddaeb66
+  CHop: 3809de59a02c0672d6aa5ca6618ea0f4134db1b6
   DoubleConversion: 501a575c40c0b50c89685762dd3e415e6bb26fb0
   fast_float: 7c925d1cebf8328d4018d061f49377e9f887e3b4
   FBLazyVector: 732df79fea96f10cc14477969cea05707026d2fd
@@ -2277,6 +2330,8 @@ SPEC CHECKSUMS:
   HopContract: 2baabbfa61026810185d3d8c0e4ea3f289be133b
   HopMesh: d692a3673c42ffe2a3ce88d4bfc48d7c640bb3f6
   HopSDK: 31d8a5ca7553bd6fdccb8c5622ec4c677999e9a5
+  NitroCompass: 1063193b5972e5deb2da1a8483514359437494d5
+  NitroModules: b878677ec4c260bd821ed4a66703979538705f2e
   RCT-Folly: 82921e585c0400eda46fac1068297aa9dfb035e4
   RCTDeprecation: 6d66040b74f4be203495adda55b49c1a25190291
   RCTRequired: ebf172e0b04196922ba4640458f9926c1bb34012

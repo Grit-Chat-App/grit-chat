@@ -27,6 +27,7 @@ const SCREEN_SOURCES = [
   'src/screens/ChannelManageScreen.tsx',
   'src/screens/NewChannelScreen.tsx',
   'src/screens/ScanContactScreen.tsx',
+  'src/screens/CompassScreen.tsx',
   'src/components/chrome.tsx',
   'src/components/HopTrace.tsx',
   'src/components/AddressText.tsx',
@@ -148,6 +149,20 @@ describe('the app renders the testIDs the flows are fixed on', () => {
     'manage-invite-send',
     'manage-status',
     'manage-revoke-note',
+    'screen-compass',
+    'compass-scroll',
+    'compass-dial',
+    'compass-unavailable',
+    'compass-reading',
+    'compass-distance',
+    'compass-direction',
+    'compass-heading',
+    'compass-status',
+    'compass-retry-permission',
+    'compass-details-toggle',
+    'compass-details',
+    'compass-target-coordinates',
+    'compass-back',
   ];
 
   const fixedPrefixes = [

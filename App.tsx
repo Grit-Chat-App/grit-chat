@@ -27,6 +27,7 @@ import {ChannelScreen} from './src/screens/ChannelScreen';
 import {NewChannelScreen} from './src/screens/NewChannelScreen';
 import {ScanContactScreen} from './src/screens/ScanContactScreen';
 import {ChannelManageScreen} from './src/screens/ChannelManageScreen';
+import {CompassScreen} from './src/screens/CompassScreen';
 import {ChannelStore} from './src/store/channels';
 import {ConversationStore} from './src/store/conversations';
 
@@ -91,6 +92,7 @@ function Gate(): React.JSX.Element {
         <Stack.Screen name="NewChannel" component={NewChannelScreen} />
         <Stack.Screen name="ScanContact" component={ScanContactScreen} />
         <Stack.Screen name="ChannelManage" component={ChannelManageScreen} />
+        <Stack.Screen name="Compass" component={CompassScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
