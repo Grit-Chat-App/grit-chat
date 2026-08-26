@@ -2,7 +2,7 @@
 //
 // The relay endpoint is a business fact, not a literal: it moves between the simulator
 // (ws://127.0.0.1:18765/), an Android emulator (ws://10.0.2.2:18765/), a phone on the LAN
-// (ws://10.4.1.221:18765/) and, later, a real wss:// relay. So it is a build-time value read from
+// (ws://<operator-lan-host>:18765/) and, later, a real wss:// relay. So it is a build-time value read from
 // Info.plist through the GritConfig native module, and there is NO fallback: when it is unset the
 // app says so on screen and dials nothing.
 //

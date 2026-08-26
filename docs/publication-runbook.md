@@ -208,10 +208,8 @@ Things a reader of this document should know, so they are decisions rather than 
 
 - **`PATH.md` carries the Apple Team ID `8H7HVPHS87`.** Deliberate. It is recoverable from any
   shipped binary. The physical device UDID that used to sit beside it is redacted.
-- **`PATH.md`, a unit test fixture and one comment carry `10.4.1.221`**, a private LAN address. No
-  longer in any shipping config, so it is a disclosure rather than a defect. Cosmetic to change.
-- **`10.4.1.221` never appears in any commit's shipping configuration.** Not removed later: it was
-  never there. The reseed exists so that sentence is true of the history and not just of the tip.
+- **Operator network addresses are absent.** Test fixtures use synthetic private ranges; historical
+  relay endpoints and device identifiers live in the private company evidence record.
 - **`site/src/config.ts` links to this repository.** While it is private that link 404s for the
   public; after the flip it resolves.
 - **The operator runbook for the DNS stack is not here.** It names the cloud project, service

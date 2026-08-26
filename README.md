@@ -23,17 +23,23 @@ the only file that changes when the SDK surface moves.
 
 ## Status, honestly
 
-The bar is met. From a physical iPhone 17 Pro, over a relay on the development Mac, with the
-sender seeing delivery confirmed:
+Two physical handsets exchanged a fresh direct message through the RelayBearer:
 
-- One to one: `delivered=true`, two forward hops, trace pulled off the device (`PATH.md`, rung 2).
-- Channels: one publication crossed the relay to an independent node, which published back with
-  its writer verified under the channel keys.
+- Physical iPhone XR, device fingerprint `47677f5c8bf3`, sent
+  `GCPHYS-BEB09E02-2FF3-4032-BD3C-6C5B69457DE6`.
+- Physical Pixel 7, device fingerprint `99fee17211cb`, rendered that exact nonce as received.
+- The sender trace returned `delivered=true`, `relayed=1`, and `forwardHops=2`.
 
-What is NOT proven, and by design is not claimed: radio discovery (every packet went through the
-relay), two handsets (the second party is `grit-relay-node` on a Mac), Android (never built), and
-the handset's rendered screen (no tool on the development Mac can read a wirelessly attached
-iPhone's display; see `PATH.md`).
+[`PATH.md`](PATH.md) records the anonymous public proof. The raw command, device identifiers,
+sender trace, receiver hierarchy, and reviewed physical receipt screenshot live in the private
+operator evidence record.
+
+## Limits
+
+The React Native SDK carries this result over a relay. It currently has no Bluetooth or LAN bearer,
+so radio discovery and direct local transport remain unproven. The production relay fleet remains
+unproven. The Pixel receipt screen was read from physical hardware; no physical iPhone screenshot
+was captured.
 
 Channels run on locally built ABI 6 artifacts because no published `hop-sdk-apple` release carries
 them, so channels cannot ship until one does. Direct messages are unaffected: they work on the

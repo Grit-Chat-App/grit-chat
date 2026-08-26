@@ -15,8 +15,8 @@
     "icons:check": "node scripts/app-icons.mjs --check",
     "e2e:build:ios": "detox build --configuration ios.sim.debug",
     "e2e:ios": "detox test --configuration ios.sim.debug",
-    "e2e:build:android": "detox build --configuration android.emu.debug",
-    "e2e:android": "detox test --configuration android.emu.debug",
+    "e2e:build:android": "detox build --configuration android.emu.proof",
+    "e2e:android": "detox test --configuration android.emu.proof",
     "e2e:guard": "jest e2e/testids.test.js",
     "e2e:dry": "cucumber-js --dry-run",
     "postinstall": "patch-package"

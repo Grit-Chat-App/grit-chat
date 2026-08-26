@@ -1,10 +1,9 @@
 // Detox configuration for Grit Chat.
 //
 // iOS is the proven surface: the suite runs on the named simulator below and that is where every
-// green result on record comes from. Android is a bring-up. The android.emu.debug configuration in
-// this file has NEVER been run: it was written while the Hop Android AAR was still being vendored
-// into the app, so there was no Android build to drive, let alone a suite result. It is wiring, not
-// evidence, and nothing here claims otherwise until a run says so.
+// green result on record comes from. Android is a bring-up. android.emu.proof is a standalone
+// bundle configuration, so it can start without Metro while ordinary Debug keeps Metro development
+// behavior. Its suite has not run successfully and remains wiring rather than evidence.
 //
 // The relay endpoint is baked in at build time. The app deliberately has NO default relay, so a
 // build without one launches unconfigured, which is what the honesty scenario about clearing the
@@ -53,19 +52,15 @@ module.exports = {
         'GRIT_BUILD_SHA="$(git rev-parse --short HEAD)$(git diff --quiet || echo -dirty)" ' +
         'GRIT_BUILD_TIME="$(date -u +%Y-%m-%dT%H:%MZ)"',
     },
-    'android.debug': {
+    'android.proof': {
       type: 'android.apk',
-      binaryPath: 'android/app/build/outputs/apk/debug/app-debug.apk',
-      // Detox installs two APKs: the app and the instrumentation APK holding
-      // chat.grit.app.DetoxTest. It would derive this path from binaryPath if omitted, but stating it
-      // means a variant rename shows up as a missing file here instead of as a derived path that
-      // quietly points at the wrong build.
-      testBinaryPath: 'android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk',
-      // assembleAndroidTest needs testBuildType to know which variant to instrument, and
-      // gritRelayUrl is the Android half of the build-time relay bake described above.
+      binaryPath: 'android/app/build/outputs/apk/proof/app-proof.apk',
+      testBinaryPath: 'android/app/build/outputs/apk/androidTest/proof/app-proof-androidTest.apk',
+      // Proof embeds JavaScript and has release-like startup behavior. It is a named test target
+      // rather than a change to normal Debug, which remains available for Metro development.
       build:
-        'cd android && ./gradlew :app:assembleDebug :app:assembleAndroidTest ' +
-        '-DtestBuildType=debug -PgritRelayUrl=ws://10.0.2.2:18765/',
+        'cd android && ./gradlew :app:assembleProof :app:assembleAndroidTest ' +
+        '-DtestBuildType=proof -PgritRelayUrl=ws://10.0.2.2:18765/',
     },
   },
   devices: {
@@ -87,6 +82,6 @@ module.exports = {
   },
   configurations: {
     'ios.sim.debug': { device: 'simulator', app: 'ios.debug' },
-    'android.emu.debug': { device: 'emulator', app: 'android.debug' },
+    'android.emu.proof': { device: 'emulator', app: 'android.proof' },
   },
 };

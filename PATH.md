@@ -147,7 +147,7 @@ simulator is never called a phone.
 | 1 | **Simulator** plus a command line node, through a local relay | **Passed on that same SIMULATOR**, through a hop-relayd built from current `origin/main` (merge `2252587`, hop PR #64). `delivered=true`, `forwardHops=2`. Trace below. |
 | 1c | **Channels** (hps://) on the SIMULATOR: host, join, publish, and a second node reading and replying | **Passed on that SIMULATOR, both directions.** `ok=true`: host to member delivery acked (`reachAfter=1`), and the member's own publication reached the app and was persisted with its verified writer. Trace below. |
 | 2 | **BushidoPhone** (physical) plus a command line node, through the local relay over the LAN | **PASSED on the handset.** One to one `delivered=true`, `forwardHops=2`, bundle `tnvLRo3HB/ZM5gdS5qm2m09fGA5Joq18Ij4IVSwH4y0=`; channel `center-camp` round trip `ok=true` with the reply's writer verified. Traces below. |
-| 3 | Two handsets talking to each other | later, needs radio work that is not in this change |
+| 3 | Physical iPhone XR fingerprint `47677f5c8bf3` and physical Pixel 7 fingerprint `99fee17211cb` through the relay | **PASSED.** The Pixel rendered `GCPHYS-BEB09E02-2FF3-4032-BD3C-6C5B69457DE6`; the sender trace reported `delivered=true`, `forwardHops=2`. Relay transport only. |
 
 
 ## The Android ladder
@@ -160,8 +160,8 @@ was met, not instead of it.
 |---|---|---|
 | A0 | Builds and launches on the `Pixel_6a_API_34` **emulator** | **Passed on EMULATOR.** Every screen rendered and was read. Two real parity defects found and fixed, below. |
 | A1 | **Emulator** plus a command line node, through a local relay | not run yet. The emulator build carries `ws://10.0.2.2:18765/`, which is the emulator's route to this Mac. |
-| A2 | **Physical Pixel 7** (`34241FDH2004KR`, Android 17, SDK 37) plus a command line node over the LAN | **staged, blocked on the device lock.** APK installed, relay live, listener live, cleartext scoped to the measured LAN address, Metro reversed over USB, runtime permissions granted. Android refuses to resume the activity behind a secure keyguard, so the app freezes instead of dialling. Needs a human to unlock, exactly as BushidoPhone did. |
-| A3 | The iPhone and the Pixel talking to each other through the relay | not run. Waits on A2. It is rung 3's SHAPE (two real phones) and still not mesh: every packet crosses the relay, so it proves nothing about radio. |
+| A2 | Physical Pixel 7 fingerprint `99fee17211cb`, Android 17, with Grit Chat's embedded proof bundle | **PASSED.** Fresh install, first-run local-network permission, relay connection, and an inbound message were exercised. Build `0d58b8c` displayed in the app. |
+| A3 | Physical iPhone XR fingerprint `47677f5c8bf3` to physical Pixel 7 fingerprint `99fee17211cb` through `hop-relayd` | **PASSED.** A fresh nonce reached the Pixel and its rendered conversation. The sender trace returned two-hop delivery. |
 
 ### The Hop Android artifact
 
@@ -191,7 +191,7 @@ published nowhere, and **shipping Android needs a real release**, exactly as cha
 
 ### Android end to end: blocked upstream, and not faked
 
-The androidTest source set, runner, Detox dependency and `android.emu.debug` configuration are all
+The androidTest source set, runner, Detox dependency and `android.emu.proof` configuration are
 wired, and the suite still cannot run. Two upstream walls, in order:
 
 1. Detox 20.28.0's `ReactNativeLoadingMonitor` calls `getReactNativeHost()`, and RN 0.87's New
@@ -595,12 +595,11 @@ marketingName: iPhone 17 Pro
 udid: [REDACTED-DEVICE-UDID]
 developerModeStatus: enabled
 osVersionNumber: 26.6
-CoreDevice id: 0280AC9F-551E-55DA-A969-62D4242A003C
+CoreDevice id: [REDACTED-DEVICE-IDENTIFIER]
 ```
 
-LAN address re-verified this run: `10.4.1.221` (re-measured with `ipconfig getifaddr en0`, not
-trusted from an earlier note). Relay: `hop-relayd` from main `54a2e82`, fresh store, listening on
-`0.0.0.0:18765`, identity `4oBRtQdPSyby5LDqA1JTMHXaJWq4mWEmBwZN7W4hRwXx`.
+The relay ran from an operator-controlled local endpoint. Its address and node identity are retained
+in the private evidence record.
 
 ### The signing wall, corrected
 
@@ -637,15 +636,14 @@ own profile commits him to nothing; the which-team-ships decision is still unspe
 
 ### The one-to-one proof, real values off the handset
 
-Second party: `grit-relay-node listen` on the Mac, address
-`5FHYEPkp4tiCFoJV8a87P3k2VKU2WfPXBfNnw4RjWzMq`. Trace pulled from
-`Documents/grit-proof.json` in the app container:
+Second party: `grit-relay-node listen` on the operator workstation. The raw app-container trace is
+retained privately:
 
-```
-selfAddress: 7bf1Xn1Jpv5MKp5zLPiwfz6iLn6aHFfQmjAEn4EEk94Z   (the handset)
-peerAddress:  5FHYEPkp4tiCFoJV8a87P3k2VKU2WfPXBfNnw4RjWzMq   (the Mac node)
-relayUrl:     ws://10.4.1.221:18765/
-bundleId:     tnvLRo3HB/ZM5gdS5qm2m09fGA5Joq18Ij4IVSwH4y0=
+```text
+selfAddress: [REDACTED]
+peerAddress: [REDACTED]
+relayUrl:     [REDACTED-OPERATOR-ENDPOINT]
+bundleId:     [REDACTED]
 ok: true  delivered: true  timedOut: false  elapsedMs: 1121
 statusHistory: relayed=0 -> relayed=1,delivered=false -> relayed=1,delivered=true,forwardHops=2,forwardMs=3791
 ```
@@ -708,10 +706,6 @@ you to run `burnchat-smoke` again; if a message needs proving, this ladder is th
 
 - **Radio discovery.** No Bluetooth, no LAN bearer. Every packet, simulator and handset alike,
   went through the relay.
-- **Two handsets.** Even on BushidoPhone the second party is `grit-relay-node` on a Mac.
-- **The handset's screen, read.** Rung 2 passed on its traces and the relay's own log; nobody has
-  yet looked at the rendered UI on the physical screen (see the screenshot gap above).
-- **Android.** Not built or exercised in this change.
 
 - **The production `wss://` fleet.** The relay here is local, and the fleet is off. The bundle
   version fix (hop PR #64) means current-main relays accept this app's v14 bundles, so the fleet
@@ -727,3 +721,29 @@ you to run `burnchat-smoke` again; if a message needs proving, this ladder is th
 One rule for anyone re-running the ladder: **the Detox suite and a staged device relay must never
 hold port 18765 at the same time.** A relay left up during a suite run fails every relay scenario
 and it reads like a product regression; it is not, it is this port.
+
+## Cross-platform physical handset proof
+
+The proof build is `0d58b8c`, based on public `main` `bc56033` after PR #8. Both packages identify
+as `chat.grit.app`, version `1.0` build `1`.
+
+- **Physical iPhone XR**, device fingerprint `47677f5c8bf3`.
+- **Physical Pixel 7**, device fingerprint `99fee17211cb`.
+- **Simulator inventory** was enumerated separately and did not supply either endpoint.
+
+The relay health check returned `ok`; the non-service control refused its connection. The iPhone and
+Pixel each used the RelayBearer to reach that verified relay. The fresh nonce
+`GCPHYS-BEB09E02-2FF3-4032-BD3C-6C5B69457DE6` arrived on the Pixel, whose rendered conversation
+reported `Received. 2 hops to reach you.` The sender trace returned `delivered=true`, `relayed=1`,
+`forwardHops=2`, and `timedOut=false`.
+
+The operator record, raw trace, hierarchy, exact commands, and reviewed physical receipt screenshot
+are stored in the private evidence record at
+`Grit-Chat-App/grit-chat-company-records` PR #2.
+
+### Limits
+
+The React Native SDK exports a relay pool and no mobile BLE or LAN bearer implementation.
+`src/hop/relayBearer.ts` is the only transport implementation. Radio discovery requires source
+implementation before it can be claimed. Channels remain blocked for release by the missing
+published ABI 6 SDK.

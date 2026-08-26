@@ -2,8 +2,8 @@ import {isLanRelayUrl, localNetworkHint} from '../src/hop/localNetwork';
 
 describe('isLanRelayUrl', () => {
   test.each([
-    'ws://10.4.1.221:18765/',
-    'ws://192.168.1.50:9000',
+    'ws://192.168.1.50:18765/',
+    'ws://192.168.1.51:9000',
     'ws://172.20.0.2:18765/',
     'ws://172.16.0.1:18765/',
     'ws://169.254.1.2:18765/',
@@ -31,25 +31,25 @@ describe('isLanRelayUrl', () => {
 
 describe('localNetworkHint', () => {
   it('names the settings path for a failing LAN relay', () => {
-    const hint = localNetworkHint('ws://10.4.1.221:18765/', 'down');
+    const hint = localNetworkHint('ws://192.168.1.50:18765/', 'down');
     expect(hint).toContain('Settings');
     expect(hint).toContain('Local Network');
   });
 
   it('shows while retrying too: the gate failing looks exactly like a flaky relay', () => {
-    expect(localNetworkHint('ws://10.4.1.221:18765/', 'retrying')).not.toBeNull();
+    expect(localNetworkHint('ws://192.168.1.50:18765/', 'retrying')).not.toBeNull();
   });
 
   it('stays silent when the relay is carrying: the gate was passed', () => {
-    expect(localNetworkHint('ws://10.4.1.221:18765/', 'up')).toBeNull();
+    expect(localNetworkHint('ws://192.168.1.50:18765/', 'up')).toBeNull();
   });
 
   it('stays silent while dialing: nothing has failed yet', () => {
-    expect(localNetworkHint('ws://10.4.1.221:18765/', 'connecting')).toBeNull();
+    expect(localNetworkHint('ws://192.168.1.50:18765/', 'connecting')).toBeNull();
   });
 
   it('stays silent when unconfigured: no relay means no gate to trip', () => {
-    expect(localNetworkHint('ws://10.4.1.221:18765/', 'unconfigured')).toBeNull();
+    expect(localNetworkHint('ws://192.168.1.50:18765/', 'unconfigured')).toBeNull();
   });
 
   it('stays silent for loopback: the permission does not apply there', () => {
