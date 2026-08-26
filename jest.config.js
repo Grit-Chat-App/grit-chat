@@ -7,6 +7,9 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(?:@react-native|react-native|@hop-mesh|react-native-fs|react-native-image-picker|react-native-audio-recorder-player)/)',
   ],
+  // Watchman holds a worktree subscription open after the suite has finished. Jest already walks
+  // this small tree deterministically, so disable that watcher and require a natural process exit.
+  watchman: false,
   // e2e/ holds the testid lockstep guard, which is a plain Jest test and runs with the rest.
   testMatch: ['**/__tests__/**/*.test.[jt]s?(x)', '**/e2e/**/*.test.[jt]s?(x)'],
 };

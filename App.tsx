@@ -23,6 +23,8 @@ import {AddContactScreen} from './src/screens/AddContactScreen';
 import {ChatScreen} from './src/screens/ChatScreen';
 import {ConversationsScreen} from './src/screens/ConversationsScreen';
 import {IdentityScreen} from './src/screens/IdentityScreen';
+import {ProfileScreen} from './src/screens/ProfileScreen';
+import {ContactProfileScreen} from './src/screens/ContactProfileScreen';
 import {ChannelScreen} from './src/screens/ChannelScreen';
 import {NewChannelScreen} from './src/screens/NewChannelScreen';
 import {ScanContactScreen} from './src/screens/ScanContactScreen';
@@ -88,6 +90,8 @@ function Gate(): React.JSX.Element {
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="AddContact" component={AddContactScreen} />
         <Stack.Screen name="Identity" component={IdentityScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="ContactProfile" component={ContactProfileScreen} />
         <Stack.Screen name="Channel" component={ChannelScreen} />
         <Stack.Screen name="NewChannel" component={NewChannelScreen} />
         <Stack.Screen name="ScanContact" component={ScanContactScreen} />

@@ -47,15 +47,24 @@ export function ScanContactScreen({navigation}: Props): React.JSX.Element {
           text,
         );
         if (outcome.ok && outcome.address != null) {
-          navigation.replace('Chat', {address: outcome.address});
-        } else {
-          setBusy(false);
-          setError(outcome.reason ?? 'Could not read that address.');
-          // Let them re-aim: the next frame may be a different code.
-          setTimeout(() => {
-            handled.current = false;
-          }, 1500);
+          if (outcome.profile != null) {
+            await store.stageProfile(outcome.address, {
+              ...outcome.profile,
+              receivedAt: Date.now(),
+              messageId: `qr:${outcome.address}:${outcome.profile.revision}`,
+            });
+            navigation.replace('ContactProfile', {address: outcome.address});
+          } else {
+            navigation.replace('Chat', {address: outcome.address});
+          }
+          return;
         }
+        setBusy(false);
+        setError(outcome.reason ?? 'Could not read that address.');
+        // Let them re-aim: the next frame may be a different code.
+        setTimeout(() => {
+          handled.current = false;
+        }, 1500);
       })();
     },
     [navigation, seam, store],

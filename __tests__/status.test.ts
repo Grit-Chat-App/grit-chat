@@ -3,6 +3,8 @@
 // never collapse into one another, because collapsing them is exactly how a messenger starts lying.
 
 import {
+  compactInboundDeliveryText,
+  compactOutboundDeliveryText,
   inboundTrace,
   outboundTrace,
   relayPlain,
@@ -68,6 +70,24 @@ describe('outbound trace states stay distinguishable', () => {
 
   it('says one hop in the singular', () => {
     expect(outboundTrace({sendState: 'delivered', forwardHops: 1}).label).toBe('delivered via 1 hop');
+  });
+});
+
+describe('compact primary delivery wording', () => {
+  it('states sending, unconfirmed, delivered, and failed without the old trace diagram', () => {
+    expect(compactOutboundDeliveryText({sendState: 'sending'})).toBe('Sending');
+    expect(compactOutboundDeliveryText({sendState: 'sent', relayed: 2})).toBe('Waiting for delivery');
+    expect(compactOutboundDeliveryText({sendState: 'delivered', forwardHops: 2})).toBe('Delivered · 2 hops');
+    expect(compactOutboundDeliveryText({sendState: 'failed'})).toBe('Not delivered');
+  });
+
+  it('does not call an unconfirmed handoff a retry when no resend happened', () => {
+    expect(compactOutboundDeliveryText({sendState: 'sent', relayed: 1})).not.toMatch(/retry/i);
+  });
+
+  it('keeps received hop text compact without claiming a named route', () => {
+    expect(compactInboundDeliveryText(2)).toBe('Received · 2 hops');
+    expect(compactInboundDeliveryText(2)).not.toMatch(/via|route/i);
   });
 });
 

@@ -9,6 +9,8 @@ export type RootStackParamList = {
   Chat: {address: string};
   AddContact: undefined;
   Identity: undefined;
+  Profile: undefined;
+  ContactProfile: {address: string};
   /** A channel conversation, keyed by topic path. */
   Channel: {path: string};
   /** Create a channel, or join one by host address and path. */

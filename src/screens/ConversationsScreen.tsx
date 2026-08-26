@@ -9,7 +9,6 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 
 import {Branding} from '../branding';
 import {GhostButton, Note, PrimaryButton, RelayPill, Screen, ScreenHeader} from '../components/chrome';
-import {HopTrace} from '../components/HopTrace';
 import {palette, radius, size, space, type} from '../design/tokens';
 import {timeLabel} from '../format';
 import {useChannelsVersion, useReadyGrit, useRelayState, useStoreVersion} from '../app/GritContext';
@@ -29,34 +28,14 @@ function preview(item: ConversationSummary): string {
   return `${prefix}${item.last.body}`;
 }
 
-function LastMark({item}: {item: ConversationSummary}): React.JSX.Element | null {
-  const last = item.last;
-  if (last == null) {
-    return null;
-  }
-  if (last.direction === 'out') {
-    return (
-      <HopTrace
-        silent
-        testID="conversation-last-trace"
-        direction="out"
-        sendState={last.sendState ?? 'sending'}
-        relayed={last.relayed}
-        forwardHops={last.forwardHops}
-      />
-    );
-  }
-  return <HopTrace silent direction="in" hops={last.hops ?? 0} />;
-}
 
-// A channel preview names the last speaker. "you" when it was you, the person's name when the store
-// knows one, the short address only when there is nothing better to call them. The resolver lives on
-// the store (see ConversationStore.labelFor) so every screen showing a person agrees.
+// A channel preview names the last speaker through the same local-alias, shared-profile, then
+// short-address resolver used everywhere else.
 function channelPreview(item: ChannelSummary, store: ConversationStore): string {
   if (item.last == null) {
     return 'no publications yet';
   }
-  const prefix = item.last.sender == null ? 'you: ' : `${store.labelFor(item.last.sender)}: `;
+  const prefix = item.last.sender == null ? 'you: ' : `${store.displayNameFor(item.last.sender)}: `;
   return `${prefix}${item.last.body}`;
 }
 
@@ -146,7 +125,7 @@ export function ConversationsScreen({navigation}: Props): React.JSX.Element {
                   invited to {invite.path}
                 </Text>
                 <Text style={styles.inviteFrom} testID={`invite-from-${index}`}>
-                  from {store.labelFor(invite.host)}
+                  from {store.displayNameFor(invite.host)}
                 </Text>
               </View>
               <TouchableOpacity
@@ -227,25 +206,16 @@ export function ConversationsScreen({navigation}: Props): React.JSX.Element {
           keyExtractor={(item) => item.contact.address}
           contentContainerStyle={styles.listBody}
           renderItem={({item, index}) => {
-            // Contacts persisted by older builds can have no label. The current type says string,
-            // but a messenger must render existing device data rather than crashing before someone
-            // can correct it. The established short address is the honest fallback.
-            const label =
-              typeof item.contact.label === 'string' && item.contact.label.length > 0
-                ? item.contact.label
-                : shortAddress(item.contact.address);
-            const named = label !== shortAddress(item.contact.address);
+            const address = item.contact.address;
+            const label = store.displayNameFor(address);
+            const named = store.hasDisplayNameFor(address);
             return (
               <TouchableOpacity
                 testID={`conversation-row-${index}`}
                 style={styles.row}
-                onPress={() => navigation.navigate('Chat', {address: item.contact.address})}>
+                onPress={() => navigation.navigate('Chat', {address})}>
                 <View style={styles.rowMark}>
-                  {named ? (
-                    <Text style={styles.rowMarkText}>{label.slice(0, 2).toUpperCase()}</Text>
-                  ) : (
-                    <View style={styles.rowNode} />
-                  )}
+                  <Icon name="user-o" size={size.icon} color={palette.sodiumBright} />
                 </View>
                 <View style={styles.rowBody}>
                   <View style={styles.rowTop}>
@@ -259,12 +229,11 @@ export function ConversationsScreen({navigation}: Props): React.JSX.Element {
                   </Text>
                   {named ? (
                     <Text style={styles.rowAddress} numberOfLines={1} testID={`conversation-address-${index}`}>
-                      {shortAddress(item.contact.address)}
+                      {shortAddress(address)}
                     </Text>
                   ) : null}
                 </View>
                 <View style={styles.rowEnd}>
-                  <LastMark item={item} />
                   {item.unread > 0 ? (
                     <View style={styles.unread} testID={`conversation-unread-${index}`}>
                       <Text style={styles.unreadText}>{item.unread}</Text>
@@ -308,7 +277,7 @@ export function ConversationsScreen({navigation}: Props): React.JSX.Element {
                     : channelPreview(item, store)}
                 </Text>
                 <Text style={styles.rowAddress} numberOfLines={1} testID={`channel-host-${index}`}>
-                  {item.channel.hosting ? 'you host' : `host ${store.labelFor(item.channel.host)}`}
+                  {item.channel.hosting ? 'you host' : `host ${store.displayNameFor(item.channel.host)}`}
                 </Text>
               </View>
               {item.unread > 0 ? (

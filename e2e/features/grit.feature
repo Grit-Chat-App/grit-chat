@@ -149,7 +149,7 @@ Feature: Grit Chat on one iPhone simulator
   @smoke
   Scenario: Clearing the relay tells the truth
     When I clear the relay endpoint
-    Then the relay indicator says it is not set
+    Then the relay indicator says it is not configured
 
   @smoke
   Scenario: The scanner is real, and paste is still the way in over a radio
@@ -158,3 +158,16 @@ Feature: Grit Chat on one iPhone simulator
     Then the scanner view is on screen
     When I return to add contact
     Then the paste path is still offered
+
+  @smoke
+  Scenario: My profile has explicit privacy controls
+    When I open my profile
+    And I save my profile as "Mara Vale"
+    Then my profile says public sharing is named and deliberate
+
+  @smoke
+  Scenario: A saved contact can be renamed locally
+    When I add "GrfdBYiMsvMvRFeZ4BVmRzXQ8sivHB4wYtQ9pKcTn3Ab" as "the studio"
+    And I open the contact details
+    And I change the local name to "sunset radio"
+    Then the local name is "sunset radio"

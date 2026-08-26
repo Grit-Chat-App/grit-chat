@@ -171,8 +171,14 @@ android {
         debug {
             signingConfig signingConfigs.debug
         }
+        // Proof is an installable sandbox, not an overlay of the person's daily Grit Chat data.
+        // Its generated launch component is chat.grit.app.proof/.MainActivity, while Debug and
+        // Release retain chat.grit.app and their existing identity/storage namespace.
         proof {
             initWith release
+            applicationIdSuffix ".proof"
+            versionNameSuffix "-proof"
+            resValue "string", "app_name", "Grit Chat Proof"
             signingConfig signingConfigs.debug
             matchingFallbacks = ['release']
         }

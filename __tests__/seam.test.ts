@@ -265,7 +265,9 @@ describe('inbound messages', () => {
     const node = new FakeNode();
     const seam = await GritSeam.start(deps(node, keychain(null)));
     const seen: {from: string; body: string; hops: number}[] = [];
-    seam.onInbound((m) => seen.push({from: m.from, body: m.body, hops: m.hops}));
+    seam.onInbound((m) => {
+      seen.push({from: m.from, body: m.body, hops: m.hops});
+    });
 
     // The seam's handler is async and returns its promise, so the test awaits the real signal
     // rather than sleeping for a guessed duration.
@@ -282,12 +284,40 @@ describe('inbound messages', () => {
     expect(node.accepted).toHaveLength(1);
   });
 
+  it('withholds acknowledgement until an async inbound write finishes', async () => {
+    const node = new FakeNode();
+    const seam = await GritSeam.start(deps(node, keychain(null)));
+    const persisted = Promise.withResolvers<void>();
+    let stored = false;
+    seam.onInbound(async () => {
+      await persisted.promise;
+      stored = true;
+    });
+
+    const delivery = node.messageHandler?.({
+      id: new Uint8Array([8]),
+      from: 'profile-sender',
+      contentType: 'application/vnd.grit-chat.profile+json',
+      body: new Uint8Array([123, 125]),
+      hops: 1,
+      createdAt: 2,
+    });
+    await Promise.resolve();
+    expect(node.accepted).toHaveLength(0);
+    persisted.resolve();
+    await delivery;
+    expect(stored).toBe(true);
+    expect(node.accepted).toHaveLength(1);
+  });
+
   it('routes a reserved address away from the app listeners', async () => {
     const node = new FakeNode();
     const seam = await GritSeam.start(deps(node, keychain(null)));
     const app: string[] = [];
     const service: string[] = [];
-    seam.onInbound((m) => app.push(m.body));
+    seam.onInbound((m) => {
+      app.push(m.body);
+    });
     seam.routeInboundFrom('service-address', (m) => service.push(m.body));
 
     await node.messageHandler?.({

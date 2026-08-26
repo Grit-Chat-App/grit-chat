@@ -129,6 +129,25 @@ export function outboundTrace(status: OutboundStatus): TraceView {
   };
 }
 
+/** Compact wording for the primary conversation flow. Detailed state remains behind a disclosure. */
+export function compactOutboundDeliveryText(status: OutboundStatus): string {
+  if (status.sendState === 'sending') {
+    return 'Sending';
+  }
+  if (status.sendState === 'delivered') {
+    const hops = status.forwardHops ?? 0;
+    return hops > 0 ? `Delivered · ${hops} ${hops === 1 ? 'hop' : 'hops'}` : 'Delivered';
+  }
+  if (status.sendState === 'failed') {
+    return 'Not delivered';
+  }
+  return 'Waiting for delivery';
+}
+
+export function compactInboundDeliveryText(hops: number): string {
+  return `Received · ${hops} ${hops === 1 ? 'hop' : 'hops'}`;
+}
+
 export function inboundTrace(hops: number): TraceView {
   return {
     kind: 'run',
