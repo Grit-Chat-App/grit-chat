@@ -277,6 +277,7 @@ export function ChannelScreen({navigation, route}: Props): React.JSX.Element {
                     body={item.body}
                     at={item.at}
                     fromHere
+                    onOpenCompass={item.sender != null ? (target) => navigation.navigate('Compass', {target}) : undefined}
                     testID={`channel-message-location-${index}`}
                   />
                 ) : (

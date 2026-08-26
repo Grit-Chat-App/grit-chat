@@ -318,6 +318,9 @@ export function ChatScreen({navigation, route}: Props): React.JSX.Element {
                     body={item.body}
                     at={item.at}
                     fromHere={item.direction === 'in'}
+                    onOpenCompass={
+                      item.direction === 'in' ? (target) => navigation.navigate('Compass', {target}) : undefined
+                    }
                     testID={`message-location-${index}`}
                   />
                 ) : item.contentType != null && item.contentType !== 'text/plain' ? (

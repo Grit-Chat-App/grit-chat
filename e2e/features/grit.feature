@@ -118,6 +118,14 @@ Feature: Grit Chat on one iPhone simulator
     When the peer sends me a location
     Then the location bubble shows the coordinates
 
+
+  @needs-relay
+  Scenario: A received location opens the offline compass
+    And a relay is running
+    When the peer sends me a location
+    And I open the offline compass
+    Then the offline compass shows the shared target behind details
+    And it states its sensor truth
   @needs-relay @needs-gps
   Scenario: A location from a peer shows how far it is
     Given my simulated position is set
