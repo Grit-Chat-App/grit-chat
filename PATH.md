@@ -744,7 +744,7 @@ are stored in the private evidence record at
 
 ### Limits
 
-The React Native SDK exports a relay pool and no mobile BLE or LAN bearer implementation.
-`src/hop/relayBearer.ts` is the only transport implementation. Radio discovery requires source
-implementation before it can be claimed. Channels remain blocked for release by the missing
-published ABI 6 SDK.
+The current proof build packages native BLE and LAN bearer implementations beside RelayBearer.
+Neither direct path has a physical nonce receipt in this record: the Test iPhone XR's current LAN
+manager reports iOS Local Network `NoAuth` pending interactive approval. Channels remain blocked
+for release by the missing published ABI 6 SDK.
