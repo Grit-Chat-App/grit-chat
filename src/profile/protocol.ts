@@ -77,6 +77,11 @@ export function base64ByteLength(value: string): number | null {
   return (value.length / 4) * 3 - padding;
 }
 
+/** A JPEG body begins with FF D8 FF, whose padded base64 prefix is always /9j/. */
+export function isJpegBase64(value: string): boolean {
+  return value.startsWith('/9j/');
+}
+
 function assertEnvelopeSize(encoded: string): void {
   if (utf8ByteLength(encoded) > MAX_PROFILE_ENVELOPE_BYTES) {
     throw new Error(`Profile card exceeds the ${MAX_PROFILE_ENVELOPE_BYTES / 1024} KiB limit.`);
@@ -112,7 +117,7 @@ export function serializeProfile(
       throw new Error('The selected profile photo is unavailable on this device.');
     }
     const byteLength = base64ByteLength(photoBase64);
-    if (byteLength == null || byteLength > MAX_PROFILE_PHOTO_BYTES) {
+    if (byteLength == null || !isJpegBase64(photoBase64) || byteLength > MAX_PROFILE_PHOTO_BYTES) {
       throw new Error(`Profile photo must be a valid JPEG no larger than ${MAX_PROFILE_PHOTO_BYTES / 1024} KiB.`);
     }
     wire.photo = {contentType: 'image/jpeg', base64: photoBase64};
@@ -144,7 +149,8 @@ export function parseProfile(body: string, rawByteLength?: number): ParsedProfil
   if (wire.v !== PROFILE_SCHEMA_VERSION) {
     throw new Error('Profile card uses an unsupported version.');
   }
-  if (!Number.isInteger(wire.revision) || (wire.revision ?? 0) < 1) {
+  const revision = wire.revision;
+  if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 1) {
     throw new Error('Profile card has an invalid revision.');
   }
   if (wire.name != null && typeof wire.name !== 'string') {
@@ -168,13 +174,13 @@ export function parseProfile(body: string, rawByteLength?: number): ParsedProfil
       throw new Error('Profile photo must be a JPEG.');
     }
     const byteLength = base64ByteLength(wire.photo.base64);
-    if (byteLength == null || byteLength > MAX_PROFILE_PHOTO_BYTES) {
-      throw new Error(`Profile photo exceeds the ${MAX_PROFILE_PHOTO_BYTES / 1024} KiB limit.`);
+    if (byteLength == null || !isJpegBase64(wire.photo.base64) || byteLength > MAX_PROFILE_PHOTO_BYTES) {
+      throw new Error(`Profile photo exceeds the ${MAX_PROFILE_PHOTO_BYTES / 1024} KiB limit or is not JPEG data.`);
     }
     photoBase64 = wire.photo.base64;
   }
   if (name == null && contact == null && photoBase64 == null) {
     throw new Error('Profile card has no shareable fields.');
   }
-  return {profile: {name, contact, revision: wire.revision}, photoBase64};
+  return {profile: {name, contact, revision}, photoBase64};
 }

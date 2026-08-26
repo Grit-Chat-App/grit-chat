@@ -84,7 +84,7 @@ export function wireArrivals(seam: GritSeam, store: ConversationStore, channels:
       key: invite.path,
       isChannel: true,
       fromLabel: `Invited to ${invite.path}`,
-      senderLabel: shortAddress(invite.host),
+      senderLabel: store.displayNameFor(invite.host),
       preview: 'channel invite',
       unreadTotal: totalUnread(store, channels),
     });

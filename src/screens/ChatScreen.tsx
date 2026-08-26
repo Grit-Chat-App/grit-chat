@@ -71,6 +71,7 @@ export function ChatScreen({navigation, route}: Props): React.JSX.Element {
     };
   }, []);
 
+  const contact = store.contactByAddress(address);
   const messages = store.messagesFor(address);
   const title = store.displayNameFor(address);
 
@@ -301,6 +302,17 @@ export function ChatScreen({navigation, route}: Props): React.JSX.Element {
           space between the header and the composer. The list shrinks by exactly that amount and
           the composer rides up by exactly that amount, so send is on screen while typing. */}
       <View style={[styles.fill, {paddingBottom: keyboardHeight}]}>
+      {contact?.pendingProfile != null ? (
+        <TouchableOpacity
+          style={styles.profileNotice}
+          onPress={() => navigation.navigate('ContactProfile', {address})}
+          testID="chat-profile-pending"
+          accessibilityRole="button"
+          accessibilityLabel={`Review profile update from ${title}`}>
+          <Icon name="user" size={size.iconSmall} color={palette.sodiumBright} />
+          <Text style={styles.profileNoticeText}>Profile update. Review before using it.</Text>
+        </TouchableOpacity>
+      ) : null}
       {messages.length === 0 ? (
         <View style={styles.empty} testID="chat-empty">
           <Note testID="chat-empty-note">
@@ -458,6 +470,23 @@ const styles = StyleSheet.create({
     height: size.touchMin,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profileNotice: {
+    minHeight: size.touchMin,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s,
+    marginHorizontal: space.l,
+    marginTop: space.s,
+    paddingHorizontal: space.m,
+    borderWidth: 1,
+    borderColor: palette.sodium,
+    borderRadius: radius.chip,
+  },
+  profileNoticeText: {
+    ...type.secondary,
+    color: palette.alkali,
+    flex: 1,
   },
   empty: {
     flex: 1,

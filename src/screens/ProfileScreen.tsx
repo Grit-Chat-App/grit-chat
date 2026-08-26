@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
   Image,
   Keyboard,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  type ScrollViewInstance,
   View,
 } from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
@@ -68,6 +69,7 @@ export function ProfileScreen({navigation}: Props): React.JSX.Element {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollViewInstance | null>(null);
 
   useEffect(() => {
     const latest = profiles.current();
@@ -110,6 +112,10 @@ export function ProfileScreen({navigation}: Props): React.JSX.Element {
       return;
     }
     const asset = result.assets?.[0];
+    if (asset?.type != null && asset.type !== 'image/jpeg') {
+      setNote('Choose a JPEG profile photo. Other formats stay off this device.');
+      return;
+    }
     if (asset?.base64 == null) {
       setNote('The photo picker did not return a shareable JPEG. Choose another photo.');
       return;
@@ -147,6 +153,7 @@ export function ProfileScreen({navigation}: Props): React.JSX.Element {
     <Screen testID="screen-profile">
       <ScreenHeader title="Your profile" compact onBack={() => navigation.goBack()} />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.body, {paddingBottom: space.xxxl + keyboardInset}]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -186,6 +193,7 @@ export function ProfileScreen({navigation}: Props): React.JSX.Element {
         <Field
           label="Name"
           value={name}
+          onFocus={() => scrollRef.current?.scrollToEnd({animated: true})}
           onChangeText={setName}
           placeholder="Name people know you by"
           maxLength={80}
@@ -198,6 +206,7 @@ export function ProfileScreen({navigation}: Props): React.JSX.Element {
         <Field
           label="Optional"
           value={contact}
+          onFocus={() => scrollRef.current?.scrollToEnd({animated: true})}
           onChangeText={setContact}
           placeholder="Phone, email, or another way to reach you"
           maxLength={160}

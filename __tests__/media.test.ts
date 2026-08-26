@@ -196,6 +196,7 @@ describe('seam media handling', () => {
       createdAt: 1000,
     });
     expect(seen[0].body).toBe('gm');
-    expect(seen[0].bodyBytes).toBeUndefined();
+    // Retaining the source bytes lets bounded application control payloads reject lossy UTF-8.
+    expect(seen[0].bodyBytes).toEqual(new Uint8Array([0x67, 0x6d]));
   });
 });

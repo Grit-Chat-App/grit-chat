@@ -1,6 +1,19 @@
-import React, {useEffect, useState} from 'react';
-import {Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {
+  Image,
+  Keyboard,
+  KeyboardEvent,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  type ScrollViewInstance,
+  View,
+} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
 import {Field, GhostButton, Note, PrimaryButton, Screen, ScreenHeader, SectionTitle} from '../components/chrome';
@@ -42,12 +55,15 @@ export function ContactProfileScreen({navigation, route}: Props): React.JSX.Elem
   const {seam, store, profiles} = useReadyGrit();
   const storeVersion = useStoreVersion();
   useProfileVersion();
+  const insets = useSafeAreaInsets();
   const contact = store.contactByAddress(route.params.address);
   const own = profiles.current();
   const [alias, setAlias] = useState(contact?.localAlias ?? '');
   const [note, setNote] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const scrollRef = useRef<ScrollViewInstance | null>(null);
   const [selection, setSelection] = useState<ProfileShareSelection>({
     includePrivateName: false,
     includePrivateContact: false,
@@ -57,6 +73,20 @@ export function ContactProfileScreen({navigation, route}: Props): React.JSX.Elem
   useEffect(() => {
     setAlias(contact?.localAlias ?? '');
   }, [contact?.localAlias, storeVersion]);
+
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event: KeyboardEvent) => setKeyboardInset(event.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () =>
+      setKeyboardInset(0),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   const recipient = store.displayNameFor(route.params.address);
 
@@ -118,12 +148,19 @@ export function ContactProfileScreen({navigation, route}: Props): React.JSX.Elem
   return (
     <Screen testID="screen-contact-profile">
       <ScreenHeader title={recipient} subtitle="contact details" compact onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" testID="contact-profile-scroll">
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.body, {paddingBottom: space.xxxl + keyboardInset}]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        testID="contact-profile-scroll">
         <SectionTitle>Local name</SectionTitle>
         <Note>Your name for this person stays on this device and wins over anything they share.</Note>
         <Field
           label="Name"
           value={alias}
+          onFocus={() => scrollRef.current?.scrollTo({y: 0, animated: true})}
           onChangeText={setAlias}
           placeholder="How you know this person"
           maxLength={80}
@@ -163,7 +200,7 @@ export function ContactProfileScreen({navigation, route}: Props): React.JSX.Elem
           Public fields are included by default. Private fields stay on this device unless you choose them in the next step. Grit Chat does not publish profiles.
         </Note>
         <PrimaryButton
-          label={`Share with ${recipient}`}
+          label="Share profile"
           icon="share"
           onPress={() => {
             setSelection({includePrivateName: false, includePrivateContact: false, includePrivatePhoto: false});
@@ -176,7 +213,7 @@ export function ContactProfileScreen({navigation, route}: Props): React.JSX.Elem
 
       <Modal visible={shareOpen} transparent animationType="slide" onRequestClose={() => setShareOpen(false)}>
         <View style={styles.modalScrim}>
-          <View style={styles.modal} testID="profile-share-confirmation">
+          <View style={[styles.modal, {paddingBottom: space.xl + insets.bottom}]} testID="profile-share-confirmation">
             <Text style={styles.modalTitle}>Share with {recipient}</Text>
             <Note>Only this saved Hop contact receives this profile card.</Note>
             {own.nameScope === 'private' && own.name.trim().length > 0 ? (
@@ -206,7 +243,7 @@ export function ContactProfileScreen({navigation, route}: Props): React.JSX.Elem
               />
             ) : null}
             <PrimaryButton
-              label={`Send to ${recipient}`}
+              label="Send profile"
               icon="paper-plane"
               onPress={() => void share()}
               busy={busy}

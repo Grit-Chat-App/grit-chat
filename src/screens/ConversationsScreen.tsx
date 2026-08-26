@@ -211,13 +211,7 @@ export function ConversationsScreen({navigation}: Props): React.JSX.Element {
               style={styles.row}
               onPress={() => navigation.navigate('Chat', {address: item.contact.address})}>
               <View style={styles.rowMark}>
-                {store.hasDisplayNameFor(item.contact.address) ? (
-                  <Text style={styles.rowMarkText}>
-                    {store.displayNameFor(item.contact.address).slice(0, 2).toUpperCase()}
-                  </Text>
-                ) : (
-                  <Icon name="user-o" size={size.icon} color={palette.sodiumBright} />
-                )}
+                <Icon name="user-o" size={size.icon} color={palette.sodiumBright} />
               </View>
               <View style={styles.rowBody}>
                 <View style={styles.rowTop}>

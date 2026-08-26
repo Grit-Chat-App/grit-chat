@@ -286,7 +286,7 @@ export class ConversationStore {
     await this.persist();
   }
 
-  /** Stage an authenticated direct profile. No pending name is used for ordinary display. */
+  /** Stage sender data for a local acceptance decision. Pending names never affect ordinary display. */
   async stageProfile(address: string, pending: PendingProfile): Promise<'staged' | 'stale' | 'duplicate'> {
     this.assertLoaded();
     let contact = this.contactByAddress(address);

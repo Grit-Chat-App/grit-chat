@@ -1,6 +1,6 @@
 import RNFS from 'react-native-fs';
 
-import {MAX_PROFILE_PHOTO_BYTES, base64ByteLength} from './protocol';
+import {MAX_PROFILE_PHOTO_BYTES, base64ByteLength, isJpegBase64} from './protocol';
 import {ProfilePhoto} from './types';
 
 const PROFILE_DIR = `${RNFS.DocumentDirectoryPath}/grit-profile`;
@@ -11,7 +11,7 @@ function pathFromUri(uri: string): string {
 
 function assertPhotoBase64(base64: string): number {
   const byteLength = base64ByteLength(base64);
-  if (byteLength == null || byteLength > MAX_PROFILE_PHOTO_BYTES) {
+  if (byteLength == null || !isJpegBase64(base64) || byteLength > MAX_PROFILE_PHOTO_BYTES) {
     throw new Error(`Profile photo must be a valid JPEG no larger than ${MAX_PROFILE_PHOTO_BYTES / 1024} KiB.`);
   }
   return byteLength;
