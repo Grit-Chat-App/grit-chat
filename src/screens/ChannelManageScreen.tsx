@@ -106,7 +106,7 @@ export function ChannelManageScreen({navigation, route}: Props): React.JSX.Eleme
                   can compare against a peer must stay on screen. */}
               <View style={styles.who}>
                 <Text style={styles.whoName} numberOfLines={1}>
-                  {store.labelFor(requester)}
+                  {store.displayNameFor(requester)}
                 </Text>
                 <Text style={styles.address} numberOfLines={1}>
                   {shortAddress(requester)}
@@ -118,11 +118,11 @@ export function ChannelManageScreen({navigation, route}: Props): React.JSX.Eleme
                 onPress={() =>
                   void act(async () => {
                     await seam.approveChannelJoin(path, requester);
-                  }, `approved ${store.labelFor(requester)}`)
+                  }, `approved ${store.displayNameFor(requester)}`)
                 }
                 testID={`manage-approve-${index}`}
                 accessibilityRole="button"
-                accessibilityLabel={`Approve ${store.labelFor(requester)}`}>
+                accessibilityLabel={`Approve ${store.displayNameFor(requester)}`}>
                 <Icon name="check" size={size.iconSmall} color={palette.sage} />
               </TouchableOpacity>
               <TouchableOpacity
@@ -131,11 +131,11 @@ export function ChannelManageScreen({navigation, route}: Props): React.JSX.Eleme
                 onPress={() =>
                   void act(async () => {
                     await seam.denyChannelJoin(path, requester);
-                  }, `denied ${store.labelFor(requester)}`)
+                  }, `denied ${store.displayNameFor(requester)}`)
                 }
                 testID={`manage-deny-${index}`}
                 accessibilityRole="button"
-                accessibilityLabel={`Deny ${store.labelFor(requester)}`}>
+                accessibilityLabel={`Deny ${store.displayNameFor(requester)}`}>
                 <Icon name="times" size={size.iconSmall} color={palette.emberBright} />
               </TouchableOpacity>
             </View>
@@ -157,7 +157,7 @@ export function ChannelManageScreen({navigation, route}: Props): React.JSX.Eleme
             <View key={member} style={styles.row} testID={`manage-member-${index}`}>
               <View style={styles.who}>
                 <Text style={styles.whoName} numberOfLines={1}>
-                  {store.labelFor(member)}
+                  {store.displayNameFor(member)}
                 </Text>
                 <Text style={styles.address} numberOfLines={1}>
                   {shortAddress(member)}
@@ -169,11 +169,11 @@ export function ChannelManageScreen({navigation, route}: Props): React.JSX.Eleme
                 onPress={() =>
                   void act(async () => {
                     await seam.removeChannelMembers(path, [member]);
-                  }, `removed ${store.labelFor(member)}: key rotated`)
+                  }, `removed ${store.displayNameFor(member)}: key rotated`)
                 }
                 testID={`manage-remove-${index}`}
                 accessibilityRole="button"
-                accessibilityLabel={`Remove ${store.labelFor(member)}`}>
+                accessibilityLabel={`Remove ${store.displayNameFor(member)}`}>
                 <Icon name="user-times" size={size.iconSmall} color={palette.emberBright} />
               </TouchableOpacity>
             </View>

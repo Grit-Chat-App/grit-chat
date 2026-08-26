@@ -209,7 +209,7 @@ export function ChannelScreen({navigation, route}: Props): React.JSX.Element {
             ? reach != null
               ? `you host, ${reach} acked`
               : 'you host'
-            : `host ${store.labelFor(channel.host)}`
+            : `host ${store.displayNameFor(channel.host)}`
         }
         compact
         onBack={() => navigation.goBack()}
@@ -266,7 +266,7 @@ export function ChannelScreen({navigation, route}: Props): React.JSX.Element {
                 style={[styles.bubble, item.sender == null ? styles.bubbleOut : styles.bubbleIn]}>
                 {item.sender != null ? (
                   <Text style={styles.sender} testID={`channel-message-sender-${index}`}>
-                    {store.labelFor(item.sender)}
+                    {store.displayNameFor(item.sender)}
                   </Text>
                 ) : null}
                 {/* Channels carry no content type on the wire, so a location publication is
