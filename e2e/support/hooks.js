@@ -32,10 +32,11 @@ const world = require('./world');
 
 setDefaultTimeout(120000);
 
-// One id on both platforms now: chat.grit.app, the reverse DNS form of grit.chat. It used to be
-// com.burnchat on Android and com.jwaldrip.gritchat on iOS, and the harness carried both spellings
-// in three places. One constant means a future rename is one line rather than a hunt.
-const APP_ID = 'chat.grit.app';
+// Android Proof deliberately uses a separate package so Detox can delete its own sandbox without
+// touching a handset's production Grit Chat identity or contact store. iOS retains the product id.
+function appId() {
+  return detox.device.getPlatform() === 'android' ? 'chat.grit.app.proof' : 'chat.grit.app';
+}
 
 // The Android counterparts of the iOS permission map, and exactly the four the app declares in
 // android/app/src/main/AndroidManifest.xml. Photos has no counterpart on purpose: sending a photo
@@ -87,19 +88,19 @@ function grantAndroidPermissions() {
   for (const permission of ANDROID_PERMISSIONS) {
     // 2>&1 is passed through to the device shell: `pm` reports a refusal by printing an exception,
     // and relying on the exit status alone would miss the cases where it prints one and exits 0.
-    const args = [...target, 'shell', 'pm', 'grant', APP_ID, permission, '2>&1'];
+    const args = [...target, 'shell', 'pm', 'grant', appId(), permission, '2>&1'];
     let output;
     try {
       output = execFileSync(adb, args, { encoding: 'utf8' });
     } catch (e) {
       output = `${e.stdout || ''}${e.stderr || ''}${e.message || ''}`;
       throw new Error(
-        `adb failed granting ${permission} to ${APP_ID} on ${deviceId || 'the attached device'}: ${output.trim()}`
+        `adb failed granting ${permission} to ${appId()} on ${deviceId || 'the attached device'}: ${output.trim()}`
       );
     }
     if (/Exception|Error/i.test(output)) {
       throw new Error(
-        `pm refused to grant ${permission} to ${APP_ID} on ${deviceId || 'the attached device'}: ` +
+        `pm refused to grant ${permission} to ${appId()} on ${deviceId || 'the attached device'}: ` +
         `${output.trim()}. The usual cause is that the permission is not declared in ` +
         `android/app/src/main/AndroidManifest.xml, which pm treats as a security error.`
       );
@@ -138,8 +139,8 @@ Before({ timeout: 120000 }, async () => {
     // system prompt mid-scenario. simctl privacy grant closes that race, but it TERMINATES a
     // running app, so a clean relaunch follows it; granting before this point would have nothing
     // installed to grant to.
-    world.grantPrivacy('location', APP_ID);
-    world.grantPrivacy('camera', APP_ID);
+    world.grantPrivacy('location', appId());
+    world.grantPrivacy('camera', appId());
     await detox.device.launchApp({newInstance: true, delete: false});
   } else {
     // Same order as iOS for a different reason. delete:true reinstalls the APK, and an install

@@ -50,6 +50,8 @@ const EMPTY_CONFIG: AppConfig = {
   chatPeer: null,
   channelPath: null,
   channelProofPath: null,
+  proofProfileFixture: null,
+  proofBuild: false,
   resetStore: false,
   buildSha: null,
   buildTime: null,
@@ -70,6 +72,10 @@ let startup: Promise<{
 let proofRan = false;
 let channelProofRan = false;
 
+// This address belongs only to the proof fixture. It never reaches a production build because
+// readConfig exposes proofProfileFixture only when Android BuildConfig.BUILD_TYPE is proof.
+const PROOF_PROFILE_FIXTURE_ADDRESS = 'DwDmNvpnaZa95JLeHXbVBd5RUgUJWJkE2WB4RZKbRBv2';
+
 async function boot(): Promise<{
   seam: GritSeam;
   store: ConversationStore;
@@ -88,6 +94,18 @@ async function boot(): Promise<{
   if (config.resetStore) {
     await store.reset();
     await channels.reset();
+  }
+
+  if (config.proofProfileFixture != null && config.proofBuild) {
+    const newer = config.proofProfileFixture === 'newer';
+    await store.addContact(PROOF_PROFILE_FIXTURE_ADDRESS);
+    await store.stageProfile(PROOF_PROFILE_FIXTURE_ADDRESS, {
+      name: newer ? 'Updated fixture' : 'Incoming fixture',
+      contact: newer ? 'newer-fixture' : 'initial-fixture',
+      revision: newer ? 2 : 1,
+      receivedAt: Date.now(),
+      messageId: newer ? 'proof-profile-v2' : 'proof-profile-v1',
+    });
   }
 
   const seam = await GritSeam.start({

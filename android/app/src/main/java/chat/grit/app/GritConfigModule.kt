@@ -35,6 +35,7 @@ class GritConfigModule(reactContext: ReactApplicationContext) :
       // so these are the only things that distinguish one APK from another.
       "buildSha" to BuildConfig.GRIT_BUILD_SHA,
       "buildTime" to BuildConfig.GRIT_BUILD_TIME,
+      "proofBuild" to (BuildConfig.BUILD_TYPE == "proof"),
     )
 
   // The relay endpoint comes from the gritRelayUrl Gradle property, turned into the GRIT_RELAY_URL

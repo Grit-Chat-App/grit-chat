@@ -205,46 +205,35 @@ export function ConversationsScreen({navigation}: Props): React.JSX.Element {
           data={conversations}
           keyExtractor={(item) => item.contact.address}
           contentContainerStyle={styles.listBody}
-          renderItem={({item, index}) => (
-            <TouchableOpacity
-              testID={`conversation-row-${index}`}
-              style={styles.row}
-              onPress={() => navigation.navigate('Chat', {address: item.contact.address})}>
-              <View style={styles.rowMark}>
-                <Icon name="user-o" size={size.icon} color={palette.sodiumBright} />
-              </View>
-              <View style={styles.rowBody}>
-                <View style={styles.rowTop}>
-                  <Text style={styles.rowTitle} numberOfLines={1} testID={`conversation-label-${index}`}>
-                    {store.displayNameFor(item.contact.address)}
-                  </Text>
-                  <Text style={styles.rowTime}>{timeLabel(item.last?.at)}</Text>
+          renderItem={({item, index}) => {
+            const address = item.contact.address;
+            const label = store.displayNameFor(address);
+            const named = store.hasDisplayNameFor(address);
+            return (
+              <TouchableOpacity
+                testID={`conversation-row-${index}`}
+                style={styles.row}
+                onPress={() => navigation.navigate('Chat', {address})}>
+                <View style={styles.rowMark}>
+                  <Icon name="user-o" size={size.icon} color={palette.sodiumBright} />
                 </View>
-                <Text style={styles.rowPreview} numberOfLines={1} testID={`conversation-preview-${index}`}>
-                  {preview(item)}
-                </Text>
-                {store.hasDisplayNameFor(item.contact.address) ? (
-                  <Text style={styles.rowAddress} numberOfLines={1} testID={`conversation-address-${index}`}>
-                    {shortAddress(item.contact.address)}
-                  </Text>
-                ) : null}
-              </View>
-              <View style={styles.rowEnd}>
-                {item.unread > 0 ? (
-                  <View style={styles.unread} testID={`conversation-unread-${index}`}>
-                    <Text style={styles.unreadText}>{item.unread}</Text>
+                <View style={styles.rowBody}>
+                  <View style={styles.rowTop}>
+                    <Text style={styles.rowTitle} numberOfLines={1} testID={`conversation-label-${index}`}>
+                      {label}
+                    </Text>
+                    <Text style={styles.rowTime}>{timeLabel(item.last?.at)}</Text>
                   </View>
                   <Text style={styles.rowPreview} numberOfLines={1} testID={`conversation-preview-${index}`}>
                     {preview(item)}
                   </Text>
                   {named ? (
                     <Text style={styles.rowAddress} numberOfLines={1} testID={`conversation-address-${index}`}>
-                      {shortAddress(item.contact.address)}
+                      {shortAddress(address)}
                     </Text>
                   ) : null}
                 </View>
                 <View style={styles.rowEnd}>
-                  <LastMark item={item} />
                   {item.unread > 0 ? (
                     <View style={styles.unread} testID={`conversation-unread-${index}`}>
                       <Text style={styles.unreadText}>{item.unread}</Text>

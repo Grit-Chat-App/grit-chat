@@ -18,6 +18,7 @@ interface GritConfigConstants {
   launchArguments: string[];
   buildSha?: string;
   buildTime?: string;
+  proofBuild?: boolean;
 }
 
 /**
@@ -74,6 +75,10 @@ export interface AppConfig {
    * line without tapping the screen.
    */
   channelProofPath: string | null;
+  /** A proof-only pending profile fixture, never honored by Debug or Release. */
+  proofProfileFixture: 'initial' | 'newer' | null;
+  /** True only in the Android Proof application-id sandbox. */
+  proofBuild: boolean;
   /** Dev-only: --grit-reset-store drops contacts and messages so a screenshot is not leftover proof debris. */
   resetStore: boolean;
   /** The commit this binary was built from, or null when the build was never told. */
@@ -122,6 +127,8 @@ export function readConfig(): AppConfig {
       chatPeer: null,
       channelPath: null,
       channelProofPath: null,
+      proofProfileFixture: null,
+      proofBuild: false,
       resetStore: false,
       buildSha: null,
       buildTime: null,
@@ -144,6 +151,15 @@ export function readConfig(): AppConfig {
     chatPeer: argAfter(args, '--grit-chat-peer'),
     channelPath: argAfter(args, '--grit-channel-path'),
     channelProofPath: argAfter(args, '--grit-channel-proof'),
+    proofBuild: constants.proofBuild === true,
+    proofProfileFixture:
+      constants.proofBuild === true
+        ? args.includes('--grit-profile-fixture-v2')
+          ? 'newer'
+          : args.includes('--grit-profile-fixture')
+            ? 'initial'
+            : null
+        : null,
     resetStore: args.includes('--grit-reset-store'),
     buildSha: definedOrNull(constants.buildSha),
     buildTime: definedOrNull(constants.buildTime),
