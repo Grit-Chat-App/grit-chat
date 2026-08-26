@@ -120,8 +120,11 @@ locals {
     contains(["A", "AAAA", "CNAME"], record_set.type)
   ])
 
+  # The completeness result is a boolean, not record content. Explicitly remove
+  # sensitivity so CI can print a safe readiness verdict without exporting the
+  # verification strings it inspected.
   firebase_dns_ready = (
-    local.firebase_dns_rrdatas_complete &&
+    nonsensitive(local.firebase_dns_rrdatas_complete) &&
     local.firebase_apex_ready &&
     local.firebase_www_ready
   )
