@@ -1,11 +1,16 @@
-# This output is intentionally sensitive. The records themselves will ultimately
-# become public DNS, but while Firebase is discovering them they must not be copied
-# into a public diff, PR body, or repository variable. The DNS workflow reads the
-# output from the private state bucket and writes the records directly.
-output "firebase_dns_records" {
-  description = "Firebase Hosting desired DNS RRsets grouped by normalized name and type."
+# Firebase records split into non-sensitive RRset identity and sensitive RDATA.
+# Terraform refuses to use a sensitive map as `for_each`, while a public plan
+# must never reveal Firebase ownership or verification strings. The DNS root uses
+# the first map for resource addresses and the second map only for record values.
+output "firebase_dns_record_sets" {
+  description = "Firebase Hosting desired DNS RRset names and types, grouped by normalized key."
+  value       = local.firebase_dns_record_sets
+}
+
+output "firebase_dns_rrdatas" {
+  description = "Firebase Hosting desired DNS RDATA values keyed by RRset."
   sensitive   = true
-  value       = local.firebase_dns_records
+  value       = local.firebase_dns_rrdatas
 }
 
 output "custom_domain_status" {

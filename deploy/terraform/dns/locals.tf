@@ -31,26 +31,36 @@ locals {
   dmarc_record = "v=DMARC1; p=${var.dmarc_policy}; sp=${var.dmarc_subdomain_policy}; rua=${local.dmarc_rua}"
 
   # Firebase returns record data without Cloud DNS's required outer TXT quotes.
-  # Normalize every generated RRset once. The apex TXT set is merged into the
-  # mail resource below; every other set is materialized by the generic Firebase
-  # resource, so a later apply cannot create a second authoritative RRset for the
-  # same name and type.
+  # Keep RRset identity separate from sensitive RDATA. Terraform must know the
+  # former for `for_each`, while plan logs must not disclose the latter.
   firebase_dns_record_sets = {
-    for key, record_set in var.firebase_dns_records : key => {
+    for key, record_set in var.firebase_dns_record_sets : key => {
       name = endswith(record_set.name, ".") ? record_set.name : "${record_set.name}."
       type = record_set.type
-      rrdatas = [
-        for rdata in record_set.rrdatas :
-        record_set.type == "TXT" ? "\"${rdata}\"" : rdata
-      ]
     }
   }
+
+  firebase_dns_rrdatas = {
+    for key, record_set in local.firebase_dns_record_sets : key => [
+      for rdata in lookup(var.firebase_dns_rrdatas, key, []) :
+      record_set.type == "TXT" ? "\"${rdata}\"" : rdata
+    ]
+  }
+
+  firebase_dns_rrdatas_complete = (
+    length(local.firebase_dns_record_sets) > 0 &&
+    alltrue([
+      for key in keys(local.firebase_dns_record_sets) :
+      length(lookup(var.firebase_dns_rrdatas, key, [])) > 0
+    ])
+  )
 
   # Cloud DNS holds one apex TXT RRset. Firebase ownership data therefore joins
   # SPF and future Workspace verification data here rather than becoming a second
   # google_dns_record_set that fights the mail resource.
-  firebase_apex_txt_values = try(
-    var.firebase_dns_records["${local.apex}|TXT"].rrdatas,
+  firebase_apex_txt_values = lookup(
+    var.firebase_dns_rrdatas,
+    "${local.apex}|TXT",
     [],
   )
 
@@ -99,19 +109,19 @@ locals {
   # both apex and www address behavior keeps a missing www association from
   # reading as a complete web deployment.
   firebase_apex_ready = anytrue([
-    for record_set in values(var.firebase_dns_records) :
+    for record_set in values(local.firebase_dns_record_sets) :
     trimsuffix(record_set.name, ".") == local.apex &&
     contains(["A", "AAAA"], record_set.type)
   ])
 
   firebase_www_ready = anytrue([
-    for record_set in values(var.firebase_dns_records) :
+    for record_set in values(local.firebase_dns_record_sets) :
     trimsuffix(record_set.name, ".") == "www.${local.apex}" &&
     contains(["A", "AAAA", "CNAME"], record_set.type)
   ])
 
   firebase_dns_ready = (
-    length(var.firebase_dns_records) > 0 &&
+    local.firebase_dns_rrdatas_complete &&
     local.firebase_apex_ready &&
     local.firebase_www_ready
   )

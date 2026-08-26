@@ -30,4 +30,19 @@ locals {
       rrdatas = distinct([for record in records : record.rdata])
     }
   }
+
+  # The set identity is safe to show in a plan because DNS owner names and types
+  # become public once the zone delegates. RDATA contains Firebase ownership and
+  # verification values, so it remains a sensitive output and never appears in
+  # public Actions plan logs.
+  firebase_dns_record_sets = {
+    for key, record in local.firebase_dns_records : key => {
+      name = record.name
+      type = record.type
+    }
+  }
+
+  firebase_dns_rrdatas = {
+    for key, record in local.firebase_dns_records : key => record.rrdatas
+  }
 }

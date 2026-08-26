@@ -111,9 +111,14 @@ jobs:
         run: |
           set -euo pipefail
           terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-          terraform output -json firebase_dns_records > "$RUNNER_TEMP/firebase-dns-records.json"
-          jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-records.json" >/dev/null
-          jq '{firebase_dns_records: .}' "$RUNNER_TEMP/firebase-dns-records.json" > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
+          terraform output -json firebase_dns_record_sets > "$RUNNER_TEMP/firebase-dns-record-sets.json"
+          terraform output -json firebase_dns_rrdatas > "$RUNNER_TEMP/firebase-dns-rrdatas.json"
+          jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-record-sets.json" >/dev/null
+          jq -n \
+            --slurpfile record_sets "$RUNNER_TEMP/firebase-dns-record-sets.json" \
+            --slurpfile rrdatas "$RUNNER_TEMP/firebase-dns-rrdatas.json" \
+            '{firebase_dns_record_sets: $record_sets[0], firebase_dns_rrdatas: $rrdatas[0]}' \
+            > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
 
       - name: Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -151,9 +156,14 @@ jobs:
         run: |
           set -euo pipefail
           terraform init -input=false -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
-          terraform output -json firebase_dns_records > "$RUNNER_TEMP/firebase-dns-records.json"
-          jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-records.json" >/dev/null
-          jq '{firebase_dns_records: .}' "$RUNNER_TEMP/firebase-dns-records.json" > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
+          terraform output -json firebase_dns_record_sets > "$RUNNER_TEMP/firebase-dns-record-sets.json"
+          terraform output -json firebase_dns_rrdatas > "$RUNNER_TEMP/firebase-dns-rrdatas.json"
+          jq -e 'type == "object" and length > 0' "$RUNNER_TEMP/firebase-dns-record-sets.json" >/dev/null
+          jq -n \
+            --slurpfile record_sets "$RUNNER_TEMP/firebase-dns-record-sets.json" \
+            --slurpfile rrdatas "$RUNNER_TEMP/firebase-dns-rrdatas.json" \
+            '{firebase_dns_record_sets: $record_sets[0], firebase_dns_rrdatas: $rrdatas[0]}' \
+            > "$RUNNER_TEMP/firebase-dns.auto.tfvars.json"
 
       - name: Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
